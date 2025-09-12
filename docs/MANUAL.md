@@ -1,0 +1,3 @@
+MANUAL.md (skeleton)
+
+[comment]: # (FILE WAS CREATED 9/10/25 - CALVIN MITCHELL)
