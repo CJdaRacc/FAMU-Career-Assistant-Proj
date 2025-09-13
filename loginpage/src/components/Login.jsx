@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Login() {
+export default function Login({ onAuth }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +22,9 @@ export default function Login() {
         throw new Error(data?.message || 'Request failed');
       }
       setMessage({ type: 'success', text: data?.message || `${mode} successful` });
+      if (mode === 'login' && onAuth) {
+        onAuth(data);
+      }
     } catch (err) {
       setMessage({ type: 'error', text: err.message || 'Something went wrong' });
     } finally {
@@ -30,61 +33,125 @@ export default function Login() {
   }
 
   return (
-    <div style={{ maxWidth: 360, margin: '40px auto', padding: 24, border: '1px solid #ddd', borderRadius: 8 }}>
-      <h2 style={{ textAlign: 'center' }}>{mode === 'login' ? 'Login' : 'Register'}</h2>
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label>
-            <div style={{ fontSize: 12, color: '#555' }}>Email</div>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: 6 }}
-            />
-          </label>
-          <label>
-            <div style={{ fontSize: 12, color: '#555' }}>Password</div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: 6 }}
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #333', background: '#111', color: '#fff' }}
-          >
-            {loading ? 'Please wait…' : mode === 'login' ? 'Login' : 'Create Account'}
-          </button>
+    <div className="container-fluid d-flex align-items-start bg-light">
+      <div className="container my-4 p-0 border border-1 border-secondary rounded-3 overflow-hidden">
+        <div className="row g-0 justify-content-center align-items-stretch">
+          {/* Left decorative image (hidden on small screens) */}
+          <div className="col-lg-3 d-none d-lg-block">
+            <div className="h-100 overflow-hidden shadow-sm">
+              <img
+                src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1200&auto=format&fit=crop"
+                alt="Decorative"
+                className="w-100 h-100"
+                style={{ objectFit: 'cover' }}
+              />
+            </div>
+          </div>
+
+          {/* Center card with form */}
+          <div className="col-12 col-md-8 col-lg-6 d-flex">
+            <div className="card shadow-sm h-100 border-0 rounded-0 flex-fill">
+              <div className="card-body p-4 p-md-5 d-flex flex-column justify-content-center">
+                <h2 className="text-center mb-4" style={{ fontFamily: '"Limelight", serif' }}>
+                  {mode === 'login' ? 'Welcome Back' : 'Create Your Account'}
+                </h2>
+
+                {message && (
+                  <div className={`alert ${message.type === 'error' ? 'alert-danger' : 'alert-success'} py-2`} role="alert">
+                    {message.text}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="mt-3">
+                  <div className="mb-3">
+                    <label htmlFor="email" className="form-label">Email</label>
+                    <div className="input-group">
+                      <span className="input-group-text" id="email-addon">
+                        <i className="fa-solid fa-envelope"></i>
+                      </span>
+                      <input
+                        id="email"
+                        type="email"
+                        className="form-control"
+                        aria-describedby="email-addon"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label htmlFor="password" className="form-label">Password</label>
+                    <div className="input-group">
+                      <span className="input-group-text" id="password-addon">
+                        <i className="fa-solid fa-lock"></i>
+                      </span>
+                      <input
+                        id="password"
+                        type="password"
+                        className="form-control"
+                        aria-describedby="password-addon"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Password"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="btn btn-primary w-100" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Please wait…
+                      </>
+                    ) : (
+                      <>
+                        <i className={`fa-solid ${mode === 'login' ? 'fa-right-to-bracket' : 'fa-user-plus'} me-2`}></i>
+                        {mode === 'login' ? 'Login' : 'Create Account'}
+                      </>
+                    )}
+                  </button>
+
+                  <div className="text-center mt-3">
+                    {mode === 'login' ? (
+                      <span>
+                        Don't have an account?{' '}
+                        <button type="button" onClick={() => setMode('register')} className="btn btn-link p-0 align-baseline">
+                          <i className="fa-regular fa-id-card me-1"></i>
+                          Register
+                        </button>
+                      </span>
+                    ) : (
+                      <span>
+                        Already have an account?{' '}
+                        <button type="button" onClick={() => setMode('login')} className="btn btn-link p-0 align-baseline">
+                          <i className="fa-solid fa-right-to-bracket me-1"></i>
+                          Login
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Right decorative image (hidden on small screens) */}
+          <div className="col-lg-3 d-none d-lg-block">
+            <div className="h-100 overflow-hidden shadow-sm">
+              <img
+                src="https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=1200&auto=format&fit=crop"
+                alt="Decorative"
+                className="w-100 h-100"
+                style={{ objectFit: 'cover' }}
+              />
+            </div>
+          </div>
         </div>
-      </form>
-      <div style={{ marginTop: 12, fontSize: 14 }}>
-        {mode === 'login' ? (
-          <span>
-            Dont have an account?{' '}
-            <button onClick={() => setMode('register')} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0 }}>
-              Register
-            </button>
-          </span>
-        ) : (
-          <span>
-            Already have an account?{' '}
-            <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0 }}>
-              Login
-            </button>
-          </span>
-        )}
       </div>
-      {message && (
-        <div style={{ marginTop: 12, color: message.type === 'error' ? '#b91c1c' : '#065f46' }}>
-          {message.text}
-        </div>
-      )}
     </div>
   );
 }
