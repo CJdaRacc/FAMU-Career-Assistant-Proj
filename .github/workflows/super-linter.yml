@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write 
 
 
 jobs:
@@ -31,6 +32,6 @@ jobs:
       - name: Super-Linter
         uses: super-linter/super-linter@v6 # Using v6 as it is the latest LTS. v8 is a development tag.
         env:
-          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: "main"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
