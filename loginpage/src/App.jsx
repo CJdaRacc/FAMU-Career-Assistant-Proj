@@ -3,6 +3,10 @@ import { useEffect, useState } from 'react'
 import Login from './components/Login.jsx'
 import Quiz from './components/Quiz.jsx'
 import Dashboard from './components/Dashboard.jsx'
+import AdvancedQuiz from './components/AdvancedQuiz.jsx'
+import AdvancedReview from './components/AdvancedReview.jsx'
+import Navbar from './components/Navbar.jsx'
+import JobMatches from './components/JobMatches.jsx'
 
 function App() {
   const [route, setRoute] = useState(window.location.hash || '#/login')
@@ -13,6 +17,13 @@ function App() {
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  // Redirect unauthenticated users to login if they try to access other routes
+  useEffect(() => {
+    if (!user && !route.startsWith('#/login')) {
+      window.location.hash = '#/login'
+    }
+  }, [user, route])
 
   const handleAuth = (data) => {
     setUser({
@@ -39,7 +50,13 @@ function App() {
   }
 
   let content = null
-  if (route.startsWith('#/quiz')) {
+  if (route.startsWith('#/advanced')) {
+    content = <AdvancedQuiz user={user} onDone={handleQuestionnaireDone} />
+  } else if (route.startsWith('#/myqa')) {
+    content = <AdvancedReview user={user} />
+  } else if (route.startsWith('#/jobs')) {
+    content = <JobMatches user={user} />
+  } else if (route.startsWith('#/quiz')) {
     content = <Quiz user={user} onDone={handleQuestionnaireDone} />
   } else if (route.startsWith('#/dashboard')) {
     content = <Dashboard user={user} onLogout={handleLogout} />
@@ -49,8 +66,10 @@ function App() {
 
   return (
     <>
-      <h1 style={{ textAlign: 'center', marginTop: 20, fontFamily: '"Limelight", serif' }}>Login Page</h1>
-      {content}
+      {user && <Navbar user={user} onLogout={handleLogout} />}
+      <div className="pt-3">
+        {content}
+      </div>
     </>
   )
 }

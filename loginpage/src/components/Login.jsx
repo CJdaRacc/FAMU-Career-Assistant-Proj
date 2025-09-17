@@ -22,7 +22,8 @@ export default function Login({ onAuth }) {
         throw new Error(data?.message || 'Request failed');
       }
       setMessage({ type: 'success', text: data?.message || `${mode} successful` });
-      if (mode === 'login' && onAuth) {
+      if (onAuth) {
+        // Auto-authenticate on both login and register so the navbar becomes visible
         onAuth(data);
       }
     } catch (err) {
