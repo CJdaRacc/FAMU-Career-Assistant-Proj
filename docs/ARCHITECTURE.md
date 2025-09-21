@@ -7,8 +7,7 @@ The FAMU Career Assistant is a web-based platform designed to help FAMU students
 ---
 
 ## 🖼️ Architecture Diagram
-![System Architecture](<img width="1024" height="1536" alt="famu-aws-architecture" src="https://github.com/user-attachments/assets/513854a6-7291-4c8e-a05a-4e45888b987d" />
-)  
+<img width="1024" height="1536" alt="famu-aws-architecture" src="https://github.com/user-attachments/assets/4bc77b69-d494-4ec5-ba05-99b14b120c36" />
 
 ---
 
