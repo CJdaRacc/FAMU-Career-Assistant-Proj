@@ -1,5 +1,4 @@
 ARCHITECTURE.md
-[comment]: # (FILE WAS CREATED 9/10/25 - CALVIN MITCHELL)
 # 📐 FAMU Career Assistant - System Architecture
 
 ## 🧭 Overview
@@ -8,8 +7,8 @@ The FAMU Career Assistant is a web-based platform designed to help FAMU students
 ---
 
 ## 🖼️ Architecture Diagram
-![System Architecture](./famu-aws-architecture.png)  
-> Located in `/docs/famu-aws-architecture.png`
+![System Architecture](<img width="1024" height="1536" alt="famu-aws-architecture" src="https://github.com/user-attachments/assets/513854a6-7291-4c8e-a05a-4e45888b987d" />
+)  
 
 ---
 
