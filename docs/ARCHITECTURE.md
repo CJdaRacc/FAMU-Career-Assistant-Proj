@@ -7,7 +7,8 @@ The FAMU Career Assistant is a web-based platform designed to help FAMU students
 ---
 
 ## 🖼️ Architecture Diagram
-<img width="1024" height="1536" alt="famu-aws-architecture" src="https://github.com/user-attachments/assets/4bc77b69-d494-4ec5-ba05-99b14b120c36" />
+<img width="1024" height="1536" alt="ChatGPT Image Sep 22, 2025, 03_33_19 PM" src="https://github.com/user-attachments/assets/02f1cfc6-9baa-4e02-91bd-282803874221" />
+
 
 ---
 
@@ -42,68 +43,81 @@ The FAMU Career Assistant is a web-based platform designed to help FAMU students
     
 ---
 
-### 4. **Cloud Infrastructure (AWS)**
-- **Amazon Route 53**: Domain management
-- **CloudFront**: Asset CDN & caching
-- **Elastic Load Balancer**: Distributes traffic to EC2
-- **EC2 Instances** (in Auto Scaling Group): Hosts backend services
-- **EBS Volumes**: App & data storage
-- **Amazon S3**: Resume files, logs
-- **EBS Snapshots**: Backups
+### 4. 🧱 MERN Stack Infrastructure
+
+- **React.js (Frontend)**:  
+  - Handles all user interface and interaction logic  
+  - Communicates with the backend via REST APIs using Axios or Fetch  
+
+- **Express.js + Node.js (Backend)**:  
+  - Serves as the API layer and business logic handler  
+  - Processes routes for login, job matching, resume upload, etc.  
+
+- **MongoDB (Database)**:  
+  - Stores user profiles, job listings, events, and application history  
+  - Managed using Mongoose ORM  
+
 
 ---
 
-### 5. **DevOps Tooling**
-- GitHub for version control
-- GitHub Actions:
-  - Auto CI for PRs
-  - Linting + Unit Tests (≥50% coverage)
-- `.env.example` used for safe environment setup
+### 5. ⚙️ DevOps & Tooling
+
+- **GitHub** for version control and collaboration  
+- **GitHub Actions** used for:
+  - CI pipeline with auto-build and unit testing
+  - Linting enforcement (≥50% coverage for Sprint 1)
+- **Environment config**: `.env.example` file provided (no secrets in repo)
 
 ---
 
 ## 🔁 Data Flow Summary
-1. User logs in via UI → Auth API
-2. Profile data submitted → Stored in DB
-3. Resume uploaded → Parsed → Skills matched with job postings
-4. Matched jobs displayed on dashboard
-5. Users can save/apply → Application status stored
+
+1. User logs in through the React UI → sends credentials to Express API  
+2. Profile form is submitted → stored in MongoDB   
+3. Job matches are calculated → ranked and sent back to frontend  
+5. User actions (save/apply) are stored in the applications collection
 
 ---
 
 ## 🔐 Security & Compliance
-- No secrets in repo
-- Resume file limits (size/type)
-- Accessibility basics: Keyboard nav, alt text
-- FERPA-compliant mock data
+
+- No sensitive keys or tokens stored in the codebase   
+- App includes basic accessibility (keyboard nav, alt text)  
+- FERPA-safe data handling using anonymized mock data
 
 ---
 
-## 📊 Monitoring & Logs
-- Logs written to Amazon S3
-- Basic action/error logging in place
+## 📊 Logs & Monitoring
+
+- Basic error logging implemented on the backend  
+- Logs can be extended to file or cloud-based services if needed
 
 ---
 
 ## 📈 Scalability
-- Auto Scaling Group for backend EC2
-- CloudFront for static file delivery
-- Pagination/lazy loading on dashboard
+
+- MERN stack is modular and ready for scaling with:
+  - Load balancing via NGINX or PM2 clusters
+  - MongoDB Atlas for cloud-hosted, auto-scaling DB
 
 ---
 
 ## 🧪 Testing
-- Unit tests integrated into CI pipeline
-- Code must pass linting + tests before merge
+
+- Unit tests implemented using Jest / React Testing Library  
+- CI pipeline ensures code is linted and passes tests before merging  
 
 ---
 
 ## 🧠 AI Usage (Sprint 1)
-AI-supported in:
-- Resume parsing suggestions
-- Diagram generation
-- Architecture documentation (this file)
 
+AI was used to support:
+- Architecture diagram design  
+- Markdown formatting for this file  
+
+---
+
+_Last updated: Sept 2025_
 ---
 
 _Last updated: Sept 2025_
