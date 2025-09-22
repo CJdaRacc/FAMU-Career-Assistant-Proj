@@ -33,14 +33,13 @@ The FAMU Career Assistant is a web-based platform designed to help FAMU students
 ---
 
 ### 3. **Database**
-- Hosted on Amazon RDS (PostgreSQL)
-- Tables:
-  - `students`
-  - `resumes`
-  - `jobs`, `job_skills`
-  - `events`
-  - `applications`
-
+- Hosted on MongoDB Atlas
+- Collections:
+  - `advancedqas`
+  - `jobmatches`
+  - `results`
+  - `users`
+    
 ---
 
 ### 4. **Cloud Infrastructure (AWS)**
