@@ -1,15 +1,15 @@
 export default function Navbar({ user, onLogout }) {
   const go = (hash) => {
-    window.location.hash = hash
-  }
+    window.location.hash = hash;
+  };
 
   const handleBackToLogin = () => {
-    if (typeof onLogout === 'function') {
-      onLogout()
+    if (typeof onLogout === "function") {
+      onLogout();
     } else {
-      go('#/login')
+      go("#/login");
     }
-  }
+  };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-famu">
@@ -32,26 +32,56 @@ export default function Navbar({ user, onLogout }) {
         <div className="collapse navbar-collapse" id="mainNavbar">
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
             <li className="nav-item">
-              <button className="nav-link btn btn-link text-white-50" onClick={() => go('#/dashboard')}>Dashboard</button>
+              <button
+                className="nav-link btn btn-link text-white-50"
+                onClick={() => go("#/dashboard")}
+              >
+                Dashboard
+              </button>
             </li>
             <li className="nav-item">
-              <button className="nav-link btn btn-link text-white-50" onClick={() => go('#/quiz')}>Profile</button>
+              <button
+                className="nav-link btn btn-link text-white-50"
+                onClick={() => go("#/quiz")}
+              >
+                Profile
+              </button>
             </li>
             <li className="nav-item">
-              <button className="nav-link btn btn-link text-white-50" onClick={() => go('#/advanced')}>Advanced Questionnaire</button>
+              <button
+                className="nav-link btn btn-link text-white-50"
+                onClick={() => go("#/advanced")}
+              >
+                Advanced Questionnaire
+              </button>
             </li>
             <li className="nav-item">
-              <button className="nav-link btn btn-link text-white-50" onClick={() => go('#/myqa')}>My Q&A</button>
+              <button
+                className="nav-link btn btn-link text-white-50"
+                onClick={() => go("#/myqa")}
+              >
+                My Q&A
+              </button>
             </li>
             <li className="nav-item">
-              <button className="nav-link btn btn-link text-white-50" onClick={() => go('#/jobs')}>Job Matches</button>
+              <button
+                className="nav-link btn btn-link text-white-50"
+                onClick={() => go("#/jobs")}
+              >
+                Job Matches
+              </button>
             </li>
           </ul>
           <div className="d-flex align-items-center gap-2">
             {user?.email && (
-              <span className="text-white fw-semibold small d-none d-md-inline">{user.email}</span>
+              <span className="text-white fw-semibold small d-none d-md-inline">
+                {user.email}
+              </span>
             )}
-            <button className="btn btn-light btn-sm" onClick={handleBackToLogin}>
+            <button
+              className="btn btn-light btn-sm"
+              onClick={handleBackToLogin}
+            >
               <i className="fa-solid fa-arrow-right-from-bracket me-1"></i>
               Back to Login
             </button>
@@ -59,5 +89,5 @@ export default function Navbar({ user, onLogout }) {
         </div>
       </div>
     </nav>
-  )
+  );
 }
