@@ -14,6 +14,17 @@ if (fs.existsSync(localEnvPath)) {
   dotenv.config({ path: localEnvPath, override: true });
 }
 
+// Helper to resolve a Gemini API key from multiple possible env var names
+function getGeminiApiKey() {
+  return (
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    process.env.VITE_GOOGLE_API_KEY ||
+    ""
+  );
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || "";
@@ -158,9 +169,7 @@ app.get("/api/health", (req, res) => {
 
 // Config health (does not expose secrets)
 app.get("/api/health/config", (req, res) => {
-  const geminiConfigured = Boolean(
-    process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
-  );
+  const geminiConfigured = Boolean(getGeminiApiKey());
   res.json({
     status: "ok",
     geminiConfigured,
@@ -365,8 +374,7 @@ app.post("/api/gemini", async (req, res) => {
         .json({ message: 'Parameter "message" is required.' });
     }
 
-    const GEMINI_API_KEY =
-      process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const GEMINI_API_KEY = getGeminiApiKey();
     if (!GEMINI_API_KEY) {
       appendEvent({ type: "gemini_failed", reason: "missing_api_key" });
       return res
@@ -509,8 +517,7 @@ app.post("/api/advanced/generate", async (req, res) => {
         ].join("\n")
       : "";
 
-    const GEMINI_API_KEY =
-      process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const GEMINI_API_KEY = getGeminiApiKey();
     if (!GEMINI_API_KEY) {
       appendEvent({ type: "adv_generate_failed", reason: "missing_api_key" });
       return res
@@ -769,8 +776,7 @@ app.post("/api/jobs/generate", async (req, res) => {
         .json({ message: "Please complete your profile first." });
     }
 
-    const GEMINI_API_KEY =
-      process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const GEMINI_API_KEY = getGeminiApiKey();
     if (!GEMINI_API_KEY) {
       appendEvent({ type: "jobs_generate_failed", reason: "missing_api_key" });
       return res
@@ -960,7 +966,153 @@ app.get("/api/jobs/my", async (req, res) => {
   }
 });
 
+// Job Postings schema: stores postings and applicants
+const jobPostingSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true }, // posting name
+    company: { type: String, required: true },
+    postedAt: { type: Date, default: Date.now }, // creation of post
+    applicants: [
+      new mongoose.Schema(
+        {
+          userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          appliedAt: { type: Date, default: Date.now }, // time applied
+        },
+        { _id: false },
+      ),
+    ],
+  },
+  { timestamps: true },
+);
+
+const JobPosting = mongoose.model("JobPosting", jobPostingSchema);
+
+// Utility: compute simple match percentage using latest JobMatch for user
+async function attachMatchPercent(userId, postings) {
+  if (!userId) {
+    return postings.map((p) => ({ ...p, matchPercent: null }));
+  }
+  const jm = await JobMatch.findOne({ userId }).sort({ createdAt: -1 }).lean();
+  const items = jm?.items || [];
+  const scoreMap = new Map(
+    items.map((it) => [String(it.title || "").toLowerCase(), it.score || 0]),
+  );
+  function scoreFor(title) {
+    const key = String(title || "").toLowerCase();
+    if (scoreMap.has(key)) return scoreMap.get(key);
+    // try loose includes
+    let best = 0;
+    for (const [t, s] of scoreMap.entries()) {
+      if (t.includes(key) || key.includes(t)) {
+        best = Math.max(best, s || 0);
+      }
+    }
+    return best || 0;
+  }
+  return postings.map((p) => ({ ...p, matchPercent: scoreFor(p.title) }));
+}
+
+// GET /api/job-postings?userId=...
+app.get("/api/job-postings", async (req, res) => {
+  try {
+    const { userId } = req.query || {};
+    const docs = await JobPosting.find({}).sort({ createdAt: -1 }).lean();
+
+    const base = docs.map((d) => {
+      const applied = userId
+        ? (d.applicants || []).find((a) => String(a.userId) === String(userId))
+        : null;
+      return {
+        id: String(d._id),
+        title: d.title,
+        company: d.company,
+        createdAt: d.postedAt || d.createdAt,
+        appliedAt: applied?.appliedAt || null,
+      };
+    });
+
+    const withScores = await attachMatchPercent(userId, base);
+    appendEvent({ type: "job_postings_list", count: withScores.length, userId: userId ? String(userId) : undefined });
+    return res.json({ items: withScores });
+  } catch (err) {
+    console.error("Job postings list error:", err);
+    appendEvent({ type: "job_postings_list_error", error: err?.message });
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// POST /api/job-postings (seed or create single posting)
+app.post("/api/job-postings", async (req, res) => {
+  try {
+    const { title, company, seed } = req.body || {};
+    if (seed) {
+      const existing = await JobPosting.countDocuments();
+      if (existing > 0) {
+        return res.json({ message: "Already seeded", count: existing });
+      }
+      const sample = [
+        { title: "Software Engineering Intern (Backend)", company: "TechNova" },
+        { title: "Full-Stack Intern (React/Python)", company: "InsightWorks" },
+        { title: "Data Engineering Intern (Jr.)", company: "BrightWeb" },
+        { title: "QA Analyst Intern", company: "QualityFirst" },
+        { title: "IT Support Associate", company: "CampusTech" },
+        { title: "Product Management Intern", company: "InnoLabs" },
+      ];
+      const docs = await JobPosting.insertMany(
+        sample.map((s) => ({ ...s, postedAt: new Date() })),
+      );
+      appendEvent({ type: "job_postings_seed", count: docs.length });
+      return res.status(201).json({ message: "Seeded", count: docs.length });
+    }
+
+    if (!title || !company) {
+      return res
+        .status(400)
+        .json({ message: "title and company are required" });
+    }
+    const doc = await JobPosting.create({ title, company, postedAt: new Date() });
+    appendEvent({ type: "job_posting_created", id: String(doc._id) });
+    return res.status(201).json({ id: doc._id });
+  } catch (err) {
+    console.error("Job posting create error:", err);
+    appendEvent({ type: "job_posting_create_error", error: err?.message });
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// POST /api/job-postings/:id/apply { userId }
+app.post("/api/job-postings/:id/apply", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+    const doc = await JobPosting.findById(id);
+    if (!doc) return res.status(404).json({ message: "Not found" });
+
+    const exists = (doc.applicants || []).some(
+      (a) => String(a.userId) === String(userId),
+    );
+    if (!exists) {
+      doc.applicants.push({ userId, appliedAt: new Date() });
+      await doc.save();
+    }
+    appendEvent({ type: "job_posting_applied", id: String(id), userId: String(userId) });
+    return res.json({ message: "Applied", id, userId });
+  } catch (err) {
+    console.error("Job posting apply error:", err);
+    appendEvent({ type: "job_posting_apply_error", error: err?.message });
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
   console.log(`Logging events to: ${LOG_FILE}`);
+  console.log(`Gemini API key configured: ${getGeminiApiKey() ? "yes" : "no"}`);
 });
