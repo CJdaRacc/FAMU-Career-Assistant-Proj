@@ -1,10 +1,64 @@
+/* Ensure the page starts at the very top */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Pull content to the top and stop global centering */
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  /* was: padding: 2rem; -> remove top padding so content sits at the top */
+  padding: 0 2rem 2rem;
+  /* was: text-align: center; -> let components control alignment (navbar stays centered via container) */
+  text-align: initial;
 }
 
+/* Remove default browser top gap */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Keep a fixed navbar pinned to the top and centered across the page width */
+.navbar-famu {
+  background-color: var(--famu-green);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+
+  position: fixed; /* pin to top */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1030;
+
+  /* BIGGER toolbar */
+  min-height: 96px; /* was 72px */
+  display: flex;
+  align-items: center;
+  padding: 0 32px; /* was 24px */
+}
+
+/* Add padding so content starts just below the fixed navbar */
+body {
+  padding-top: 108px; /* was 80px; match the taller navbar */
+}
+
+/* Reduce big vertical gaps on pages that use Bootstrap's my-5 */
+.container.my-5 {
+  margin-top: 0.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* Make sure the dashboard wrapper isn't pushing content down */
+.page-dashboard {
+  margin-top: 0 !important;
+  text-align: initial;
+}
+
+/* ... existing code ... */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -43,19 +97,67 @@
 
 /* -------- FAMU Navbar Theme -------- */
 :root {
-  --famu-green: #0a5c2c;   /* deep green from reference */
+  --famu-green: #0a5c2c;
   --famu-green-700: #0b6a33;
-  --famu-orange: #f07f13;  /* brand orange */
+  --famu-orange: #f07f13;
 }
 
-.navbar-famu {
-  background-color: var(--famu-green);
+/* Orange job card like the mock */
+.job-card {
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.job-card-orange {
+  background: var(--famu-orange);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  border: none;
+}
+.job-card-orange .job-title {
+  font-size: 1.05rem;
+}
+.job-card-orange .job-sub {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+.job-card-orange .job-skills strong {
+  color: #fff;
 }
 
+/* Green circular match percentage */
+.match-badge {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: 50%;
+  background: var(--famu-green);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* Make buttons readable on orange */
+.job-card-orange .btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.85);
+  color: #fff;
+}
+.job-card-orange .btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.job-card-orange .btn-light {
+  color: #0a0a0a;
+}
+
+/* Slightly larger spacing between recommendation cards */
+.vstack.gap-3 > * + * {
+  margin-top: 0.75rem;
+}
+
+/* Keep existing navbar styles (now fixed at the top) */
 .navbar-famu .navbar-toggler {
-  border-color: rgba(255,255,255,0.4);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 .navbar-famu .navbar-toggler-icon {
   filter: invert(1);
@@ -71,51 +173,57 @@
   background: var(--famu-orange);
   color: #fff;
   font-weight: 800;
-  font-size: 1rem;
-  padding: 4px 10px;
-  border-radius: 6px;
-  letter-spacing: 0.5px;
+  font-size: 1.25rem; /* was 1.1rem */
+  padding: 8px 14px; /* was 6px 12px */
+  border-radius: 8px;
+  letter-spacing: 0.6px;
   display: inline-block;
 }
 
 .famu-brand .brand-title {
   color: #fff;
   font-family: "Limelight", serif;
-  font-size: 1.15rem;
-  letter-spacing: 0.3px;
+  font-size: 1.6rem; /* was 1.35rem */
+  letter-spacing: 0.4px;
 }
 
-/* Make nav links subtly muted like the mock and brighten on hover */
+/* Make nav links larger with more click area */
+
 .navbar-famu .nav-link {
-  color: rgba(255,255,255,0.75) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 1.125rem; /* was ~1rem */
+  padding: 1rem 1.25rem; /* bigger click area */
 }
 .navbar-famu .nav-link:hover {
   color: #fff !important;
 }
 
-/* Tighten spacing under navbar so content sits higher */
-.navbar-famu + .pt-3,
-.navbar-famu + .pt-0 {
-  padding-top: 0.75rem !important;
-}
-
-/* Optional: card accent to lean into the mock’s look */
-.card.shadow-sm {
-  box-shadow: 0 10px 24px rgba(0,0,0,0.06) !important;
-  border-radius: 12px;
-}
-
-/* Compact the Dashboard under the existing banner */
-.page-dashboard {
-  /* Pull the page up slightly to sit closer to the banner */
-  margin-top: -0.75rem;
-  text-align: initial; /* let cards/text align normally */
-}
-
-@media (min-width: 992px) {
-  .page-dashboard {
-    margin-top: -1.25rem;
+/* Optional: keep usability on small screens */
+@media (max-width: 576px) {
+  .navbar-famu {
+    min-height: 80px;
+    padding: 0 20px;
   }
+  body {
+    padding-top: 92px;
+  }
+  .famu-brand .brand-pill {
+    font-size: 1.1rem;
+    padding: 6px 12px;
+  }
+  .famu-brand .brand-title {
+    font-size: 1.35rem;
+  }
+  .navbar-famu .nav-link {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Optional: card accent */
+.card.shadow-sm {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 12px;
 }
 
 /* Optional: tighten card spacing inside dashboard */
@@ -126,4 +234,28 @@
 .page-dashboard .container {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
+}
+/* Two-column layout: main (left) + sidebar (right) */
+.page-dashboard .row {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start; /* align card tops */
+}
+/* Left/main area wider */
+.page-dashboard .row > *:first-child {
+  flex: 2 1 0; /* ~2/3 width */
+}
+/* Right/sidebar (Sneak peek) narrower */
+.page-dashboard .row > *:last-child {
+  flex: 1 1 0; /* ~1/3 width */
+}
+/* Stack on smaller screens */
+@media (max-width: 992px) {
+  .page-dashboard .row {
+    flex-direction: column;
+  }
+  .page-dashboard .row > *:first-child,
+  .page-dashboard .row > *:last-child {
+    flex: 0 0 auto;
+  }
 }
