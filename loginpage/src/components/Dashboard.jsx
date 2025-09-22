@@ -49,7 +49,7 @@ export default function Dashboard({ user, onLogout }) {
               {/* --- Mock Jobs List with Save / Apply --- */}
               <hr className="my-4" />
               <h5 className="mb-3">Job Recommendations</h5>
-              <MockJobs />
+              <JobRecommendations user={user} />
             </div>
           </div>
         </div>
@@ -58,9 +58,15 @@ export default function Dashboard({ user, onLogout }) {
         <div className="col-12 col-lg-4">
           <div className="card shadow-sm h-100">
             <div className="card-body d-flex flex-column">
-              <h5 className="mb-2">Sneak peek: Save</h5>
-              <SavedSneakPeek />
-              <div className="mt-auto pt-3">
+              <h5 className="mb-2">Sneak peek: Job Matches</h5>
+              <JobMatchesSneakPeek user={user} />
+              <div className="mt-auto pt-3 d-grid gap-2">
+                <button
+                  className="btn btn-success w-100"
+                  onClick={() => (window.location.hash = "#/job-postings")}
+                >
+                  Go to Job Postings
+                </button>
                 <button className="btn btn-primary w-100" onClick={goToSave}>
                   Go to Save
                 </button>
@@ -156,17 +162,77 @@ function useSavedApplied() {
   return { saved, applied, saveJob, unsaveJob, applyJob };
 }
 
-function MockJobs() {
+function JobRecommendations({ user }) {
   const { saved, applied, saveJob, unsaveJob, applyJob } = useSavedApplied();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const items = useMemo(() => MOCK_JOBS, []);
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      if (!user?.userId) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setError("");
+        const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+        const resp = await fetch(`${base}/api/jobs/my?userId=${encodeURIComponent(user.userId)}`);
+        const data = await resp.json();
+        if (!mounted) return;
+        const list = Array.isArray(data.matches) ? data.matches : [];
+        // Normalize into UI jobs
+        const mapped = list.map((m, idx) => ({
+          id: `match-${idx}-${(m.title || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+          title: m.title,
+          company: "", // unknown for matches
+          location: "",
+          type: "",
+          matchPercent: m.score ?? 0,
+          matchedSkills: [],
+          missingSkills: [],
+        }));
+        setItems(mapped);
+      } catch (e) {
+        setError(e?.message || "Failed to load");
+        setItems([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.userId]);
+
+  if (!user?.userId) {
+    return (
+      <div className="alert alert-warning">
+        Please log in to see your personalized job matches.
+      </div>
+    );
+  }
+
+  if (loading) return <div className="text-muted">Loading recommendations…</div>;
+  if (error) return <div className="alert alert-warning py-2">{error}</div>;
+
+  if (!items.length) {
+    return (
+      <div className="alert alert-info">
+        No job matches yet. Go to <a href="#/jobs">Job Matches</a> and generate results.
+      </div>
+    );
+  }
 
   return (
     <div className="vstack gap-3">
-      {items.map((job) => {
+      {items.slice(0, 5).map((job) => {
         const isSaved = saved.some((j) => j.id === job.id);
         const isApplied = applied.some((j) => j.id === job.id);
-
         return (
           <div key={job.id} className="job-card job-card-orange shadow-sm">
             <div className="d-flex align-items-center">
@@ -176,15 +242,7 @@ function MockJobs() {
               <div className="flex-grow-1">
                 <div className="job-title fw-bold">{job.title}</div>
                 <div className="job-sub text-white-50 small">
-                  {job.company} • {job.location} • {job.type}
-                </div>
-                <div className="job-skills mt-2 small">
-                  <div>
-                    <strong>Matched:</strong> {job.matchedSkills.join(", ")}
-                  </div>
-                  <div>
-                    <strong>Missing:</strong> {job.missingSkills.join(", ")}
-                  </div>
+                  {job.company || "Recommended role"}
                 </div>
               </div>
               <div className="d-flex flex-column flex-sm-row gap-2 ms-3">
@@ -254,6 +312,61 @@ function SavedSneakPeek() {
       {saved.length > 3 && (
         <small className="text-muted">+{saved.length - 3} more saved…</small>
       )}
+    </ul>
+  );
+}
+
+
+function JobMatchesSneakPeek({ user }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        if (!user?.userId) {
+          setItems([]);
+          setLoading(false);
+          return;
+        }
+        const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+        const resp = await fetch(`${base}/api/jobs/my?userId=${encodeURIComponent(user.userId)}`);
+        const data = await resp.json();
+        if (!isMounted) return;
+        const list = Array.isArray(data.matches) ? data.matches : [];
+        setItems(
+          list
+            .slice()
+            .sort((a, b) => (b.score || 0) - (a.score || 0))
+            .slice(0, 3),
+        );
+      } catch (e) {
+        if (isMounted) setItems([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.userId]);
+
+  if (loading) return <small className="text-muted">Loading…</small>;
+  if (!items.length)
+    return <small className="text-muted">No job matches yet.</small>;
+
+  return (
+    <ul className="list-unstyled mb-0">
+      {items.map((m, i) => (
+        <li key={`${i}-${m.title}`} className="mb-2">
+          <div className="fw-semibold small">
+            {m.title} <span className="text-success ms-1">{m.score ?? 0}%</span>
+          </div>
+        </li>
+      ))}
     </ul>
   );
 }

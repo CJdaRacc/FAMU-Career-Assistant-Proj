@@ -8,6 +8,7 @@ import AdvancedReview from "./components/AdvancedReview.jsx";
 import Navbar from "./components/Navbar.jsx";
 import JobMatches from "./components/JobMatches.jsx";
 import Save from "./components/SavePage.jsx";
+import JobPostings from "./components/JobPostings.jsx";
 
 function App() {
   const [route, setRoute] = useState(window.location.hash || "#/login");
@@ -63,6 +64,8 @@ function App() {
     content = <Dashboard user={user} onLogout={handleLogout} />;
   } else if (route.startsWith("#/save")) {
     content = <Save user={user} />;
+  } else if (route.startsWith("#/job-postings")) {
+    content = <JobPostings user={user} />;
   } else {
     content = <Login onAuth={handleAuth} />;
   }
