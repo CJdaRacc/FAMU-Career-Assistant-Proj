@@ -40,3 +40,90 @@
 .read-the-docs {
   color: #888;
 }
+
+/* -------- FAMU Navbar Theme -------- */
+:root {
+  --famu-green: #0a5c2c;   /* deep green from reference */
+  --famu-green-700: #0b6a33;
+  --famu-orange: #f07f13;  /* brand orange */
+}
+
+.navbar-famu {
+  background-color: var(--famu-green);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+.navbar-famu .navbar-toggler {
+  border-color: rgba(255,255,255,0.4);
+}
+.navbar-famu .navbar-toggler-icon {
+  filter: invert(1);
+}
+
+.famu-brand {
+  display: inline-flex;
+  align-items: center;
+  color: #fff;
+}
+
+.famu-brand .brand-pill {
+  background: var(--famu-orange);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.famu-brand .brand-title {
+  color: #fff;
+  font-family: "Limelight", serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.3px;
+}
+
+/* Make nav links subtly muted like the mock and brighten on hover */
+.navbar-famu .nav-link {
+  color: rgba(255,255,255,0.75) !important;
+}
+.navbar-famu .nav-link:hover {
+  color: #fff !important;
+}
+
+/* Tighten spacing under navbar so content sits higher */
+.navbar-famu + .pt-3,
+.navbar-famu + .pt-0 {
+  padding-top: 0.75rem !important;
+}
+
+/* Optional: card accent to lean into the mock’s look */
+.card.shadow-sm {
+  box-shadow: 0 10px 24px rgba(0,0,0,0.06) !important;
+  border-radius: 12px;
+}
+
+/* Compact the Dashboard under the existing banner */
+.page-dashboard {
+  /* Pull the page up slightly to sit closer to the banner */
+  margin-top: -0.75rem;
+  text-align: initial; /* let cards/text align normally */
+}
+
+@media (min-width: 992px) {
+  .page-dashboard {
+    margin-top: -1.25rem;
+  }
+}
+
+/* Optional: tighten card spacing inside dashboard */
+.page-dashboard .card .card-body h2 {
+  margin-bottom: 0.5rem;
+}
+
+.page-dashboard .container {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}

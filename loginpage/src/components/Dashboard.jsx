@@ -6,9 +6,12 @@ export default function Dashboard({ user, onLogout }) {
       window.location.hash = '#/login'
     }
   }
+  const goToSave = () => {
+    window.location.hash = '#/save'
+  }
 
   return (
-    <div className="container my-5">
+    <div className="container mt-2 mb-4">
       <div className="row justify-content-center">
         <div className="col-12 col-lg-8">
           <div className="card shadow-sm">
@@ -34,6 +37,22 @@ export default function Dashboard({ user, onLogout }) {
             </div>
           </div>
         </div>
+
+        {/* Sidebar with Sneak Peek (moved to the side) */}
+        <div className="col-12 col-lg-4 mt-4 mt-lg-0">
+          <div className="card shadow-sm h-100">
+            <div className="card-body d-flex flex-column">
+              <h5 className="mb-1">Sneak peek: Save</h5>
+              <small className="text-muted mb-3">View items you’ve saved for later.</small>
+              <div className="mt-auto">
+                <button className="btn btn-primary w-100" onClick={goToSave}>
+                  Go to Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   )

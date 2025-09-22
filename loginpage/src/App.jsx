@@ -7,6 +7,7 @@ import AdvancedQuiz from './components/AdvancedQuiz.jsx'
 import AdvancedReview from './components/AdvancedReview.jsx'
 import Navbar from './components/Navbar.jsx'
 import JobMatches from './components/JobMatches.jsx'
+import Save from './components/SavePage.jsx'
 
 function App() {
   const [route, setRoute] = useState(window.location.hash || '#/login')
@@ -60,6 +61,8 @@ function App() {
     content = <Quiz user={user} onDone={handleQuestionnaireDone} />
   } else if (route.startsWith('#/dashboard')) {
     content = <Dashboard user={user} onLogout={handleLogout} />
+  } else if (route.startsWith('#/save')) {
+    content = <Save user={user} />
   } else {
     content = <Login onAuth={handleAuth} />
   }
