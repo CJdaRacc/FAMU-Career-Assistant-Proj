@@ -4,6 +4,12 @@ export default function Save({ user }) {
         window.location.hash = '#/dashboard'
     }
 
+    const readSaved = () => {
+        try { return JSON.parse(localStorage.getItem('savedJobs') || '[]') } catch { return [] }
+    }
+
+    const saved = readSaved()
+
     return (
         <div className="container my-5">
             <div className="row justify-content-center">
@@ -26,9 +32,29 @@ export default function Save({ user }) {
 
                             <div className="text-start">
                                 <h5 className="mb-3">Your saved items</h5>
-                                <p className="text-muted">
-                                    You haven’t saved anything yet. Explore content and click “Save” to see it appear here.
-                                </p>
+                                {saved.length === 0 ? (
+                                    <p className="text-muted">
+                                        You haven’t saved anything yet. Explore jobs and click “Save” to see them appear here.
+                                    </p>
+                                ) : (
+                                    <ul className="list-group">
+                                        {saved.map(job => (
+                                            <li key={job.id} className="list-group-item d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <div className="fw-semibold">{job.title}</div>
+                                                    <div className="text-muted small">{job.company} • {job.location} • {job.type}</div>
+                                                </div>
+                                                <a
+                                                    className="btn btn-sm btn-outline-primary"
+                                                    href="#/dashboard"
+                                                    title="Back to dashboard to manage"
+                                                >
+                                                    Manage
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
 
                         </div>
