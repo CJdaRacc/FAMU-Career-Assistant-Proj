@@ -1,4 +1,4 @@
-# FAMU Career Assistant
+# FAMU Career Assistant v0.1.0
 
 An end-to-end demo web app that helps students explore careers. It includes:
 - React + Vite frontend (loginpage)
