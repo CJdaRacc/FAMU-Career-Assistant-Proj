@@ -79,6 +79,14 @@ export default function Navbar({ user, onLogout }) {
                 Job Postings
               </button>
             </li>
+            <li className="nav-item">
+              <button
+                className="nav-link btn btn-link text-white-50"
+                onClick={() => go("#/resume-feedback")}
+              >
+                Resume Feedback
+              </button>
+            </li>
           </ul>
           <div className="d-flex align-items-center gap-2">
             {user?.email && (
