@@ -5,6 +5,9 @@ import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import multer from "multer";
+import mammoth from "mammoth";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 // Load environment variables from .env (and optionally .env.local)
 const rootEnvPath = path.resolve(process.cwd(), ".env");
@@ -1107,6 +1110,167 @@ app.post("/api/job-postings/:id/apply", async (req, res) => {
   } catch (err) {
     console.error("Job posting apply error:", err);
     appendEvent({ type: "job_posting_apply_error", error: err?.message });
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Resume extraction endpoint (PDF/DOCX)
+const upload = multer({ storage: multer.memoryStorage() });
+app.post("/api/resume/extract", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const { originalname, mimetype, buffer } = req.file;
+    const name = String(originalname || "");
+    const ext = name.split(".").pop()?.toLowerCase();
+    let text = "";
+
+    if (mimetype === "application/pdf" || ext === "pdf") {
+      const data = await pdfParse(buffer).catch(() => null);
+      text = data?.text || "";
+    } else if (
+      mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      ext === "docx"
+    ) {
+      const result = await mammoth.extractRawText({ buffer });
+      text = result?.value || "";
+    } else if (ext === "doc") {
+      return res.status(415).json({ message: "Legacy .doc format not supported. Please upload a .docx or PDF." });
+    } else {
+      return res.status(415).json({ message: "Unsupported file type. Upload a PDF or DOCX." });
+    }
+
+    text = String(text || "").replace(/\s+/g, " ").trim();
+    if (!text) {
+      return res.status(422).json({ message: "Could not extract text from file." });
+    }
+    return res.json({ text, chars: text.length });
+  } catch (err) {
+    console.error("Resume extract error:", err);
+    appendEvent({ type: "resume_extract_error", error: err?.message });
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Resume feedback endpoint using Gemini
+app.post("/api/resume/feedback", async (req, res) => {
+  try {
+    const { resumeText, savedJobs } = req.body || {};
+    const text = String(resumeText || "").trim();
+    const jobs = Array.isArray(savedJobs) ? savedJobs : [];
+    if (!text) {
+      return res.status(400).json({ message: "resumeText is required" });
+    }
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+      return res.status(400).json({ message: "savedJobs (non-empty array) is required" });
+    }
+
+    const GEMINI_API_KEY = getGeminiApiKey();
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ message: "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env" });
+    }
+
+    const model = "gemini-2.0-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+    const jobList = jobs
+      .map((j, i) => {
+        const id = j.id ?? i;
+        const title = (j.title || j.name || "").toString();
+        const company = (j.company || j.org || "").toString();
+        const desc = (j.description || j.desc || j.reason || "").toString();
+        return `- id:${id} | ${title} @ ${company}\n${desc}`.trim();
+      })
+      .join("\n\n");
+
+    const prompt = [
+      "You are an ATS-style resume analyzer.",
+      "Task: From the RESUME TEXT, identify and list the candidate's key skills (technologies, tools, frameworks, programming languages, certifications, and relevant domain skills). Use these extracted skills as KEYWORDS.",
+      "Then, for each job in SAVED JOBS, compute a match percentage (0-100) based on overlap between these KEYWORDS and the job text (title/company/description).",
+      "For each job, include which KEYWORDS matched as matchedKeywords.",
+      "Return strictly valid JSON only following this schema:",
+      '{"keywords": ["keyword"...], "jobs": [{"id": string|number, "title": string, "company": string, "score": number, "matchedKeywords": ["..."], "notes": string}]}'
+    ].join(" ");
+
+    const sections = [
+      `RESUME TEXT\n${text.slice(0, 15000)}`,
+      `SAVED JOBS\n${jobList}`,
+      'OUTPUT FORMAT\n{"keywords": ["..."], "jobs": [{"id": "...", "title": "...", "company": "...", "score": 0, "matchedKeywords": ["..."], "notes": "..."}]}'
+    ].join("\n\n");
+
+    const payload = { contents: [{ parts: [{ text: `${prompt}\n\n${sections}` }] }] };
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-goog-api-key": GEMINI_API_KEY },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      appendEvent({ type: "resume_feedback_ai_error", status: resp.status, body: data });
+      return res.status(resp.status).json({ message: "Gemini API error", body: data });
+    }
+
+    const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    let parsed = null;
+    try {
+      const jsonMatch = textOut.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(textOut);
+    } catch (_) {}
+
+    if (!parsed || !Array.isArray(parsed.jobs)) {
+      // Fallback: derive keywords from resume text frequency
+      const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+      const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
+      const baseKeywords = Object.entries(freq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([w]) => w);
+
+      const results = jobs.map((j, i) => {
+        const textBlob = [j.title, j.company, j.description, j.reason]
+          .map((s) => (s || "").toString().toLowerCase())
+          .join(" ");
+        const matched = baseKeywords.filter((k) => textBlob.includes(k.toLowerCase()));
+        const denom = Math.max(5, baseKeywords.length || 1);
+        const score = Math.round((matched.length / denom) * 100);
+        return {
+          id: j.id ?? i,
+          title: j.title || j.name || "",
+          company: j.company || j.org || "",
+          score: Math.max(0, Math.min(100, score)),
+          matchedKeywords: matched,
+          notes: "Heuristic fallback based on resume keywords."
+        };
+      });
+      return res.json({ keywords: baseKeywords, jobs: results, ai: false });
+    }
+
+    // Normalize AI output
+    const keywords = Array.isArray(parsed.keywords)
+      ? parsed.keywords.map((k) => String(k)).filter(Boolean).slice(0, 30)
+      : [];
+    const resultsRaw = parsed.jobs.map((j, i) => ({
+      id: j.id ?? jobs[i]?.id ?? i,
+      title: String(j.title || jobs[i]?.title || ""),
+      company: String(j.company || jobs[i]?.company || ""),
+      score: Math.max(0, Math.min(100, parseInt(j.score, 10) || 0)),
+      matchedKeywords: Array.isArray(j.matchedKeywords)
+        ? j.matchedKeywords.map((k) => String(k)).filter(Boolean).slice(0, 30)
+        : [],
+      notes: String(j.notes || "")
+    }));
+
+    const filteredKeywords = keywords;
+    const results = resultsRaw;
+
+    appendEvent({ type: "resume_feedback_ok", jobs: results.length });
+    return res.json({ keywords: filteredKeywords, jobs: results, ai: true });
+  } catch (err) {
+    console.error("Resume feedback error:", err);
+    appendEvent({ type: "resume_feedback_exception", error: err?.message });
     return res.status(500).json({ message: "Server error" });
   }
 });

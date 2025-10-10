@@ -1,4 +1,6 @@
 // loginpage/src/components/SavePage.jsx
+import { useState } from "react";
+
 export default function Save({ user }) {
   const handleBack = () => {
     window.location.hash = "#/dashboard";
@@ -12,7 +14,20 @@ export default function Save({ user }) {
     }
   };
 
-  const saved = readSaved();
+  const [saved, setSaved] = useState(readSaved());
+  const [managingId, setManagingId] = useState(null);
+
+  const handleManage = (id) => {
+    setManagingId((prev) => (prev === id ? null : id));
+  };
+
+  const handleDelete = (id) => {
+    const next = saved.filter((j) => j.id !== id);
+    setSaved(next);
+    try {
+      localStorage.setItem("savedJobs", JSON.stringify(next));
+    } catch {}
+  };
 
   return (
     <div className="container my-5">
@@ -64,13 +79,27 @@ export default function Save({ user }) {
                             {job.company} • {job.location} • {job.type}
                           </div>
                         </div>
-                        <a
-                          className="btn btn-sm btn-outline-primary"
-                          href="#/dashboard"
-                          title="Back to dashboard to manage"
-                        >
-                          Manage
-                        </a>
+                        <div className="d-flex gap-2 align-items-center">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => handleManage(job.id)}
+                            aria-expanded={managingId === job.id}
+                            aria-controls={`manage-${job.id}`}
+                          >
+                            Manage
+                          </button>
+                          {managingId === job.id && (
+                            <button
+                              id={`manage-${job.id}`}
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => handleDelete(job.id)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>
