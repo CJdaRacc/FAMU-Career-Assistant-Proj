@@ -1156,14 +1156,44 @@ app.post("/api/resume/extract", upload.single("file"), async (req, res) => {
 // Resume feedback endpoint using Gemini
 app.post("/api/resume/feedback", async (req, res) => {
   try {
-    const { resumeText, savedJobs } = req.body || {};
+    const { resumeText, savedJobs, compareToJobs } = req.body || {};
     const text = String(resumeText || "").trim();
     const jobs = Array.isArray(savedJobs) ? savedJobs : [];
+    const compare = typeof compareToJobs === "boolean" ? compareToJobs : true;
     if (!text) {
       return res.status(400).json({ message: "resumeText is required" });
     }
+
+    // Stopwords (lowercase) to exclude from heuristic keywords
+    const STOPWORDS = new Set([
+      "the","and","or","a","an","to","of","in","on","for","with","by","at","from","is","are","was","were","be","been","being","this","that","these","those","as","it","its","but","if","not","no","yes","you","your","we","our","they","their","he","she","him","her","them","i","me","my","mine","ours", "using", "time",
+    ]);
+
+    // If user opts not to compare to jobs, return keywords only
+    if (!compare) {
+      const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+      const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
+      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
+      entries.sort((a, b) => {
+        const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
+        const bs = b[1] + (TECH.test(b[0]) ? 5 : 0);
+        return bs - as;
+      });
+      const baseKeywords = entries.slice(0, 15).map(([w]) => w);
+      appendEvent({ type: "resume_feedback_keywords_only", keywords: baseKeywords.length });
+      return res.json({ keywords: baseKeywords, jobs: [], ai: false });
+    }
     if (!Array.isArray(jobs) || jobs.length === 0) {
-      return res.status(400).json({ message: "savedJobs (non-empty array) is required" });
+      const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+      const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
+      const baseKeywords = Object.entries(freq)
+        .filter(([w]) => !STOPWORDS.has(w))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([w]) => w);
+      appendEvent({ type: "resume_feedback_no_jobs_keywords_only", keywords: baseKeywords.length });
+      return res.json({ keywords: baseKeywords, jobs: [], ai: false });
     }
 
     const GEMINI_API_KEY = getGeminiApiKey();
@@ -1225,6 +1255,7 @@ app.post("/api/resume/feedback", async (req, res) => {
       const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
       const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
       const baseKeywords = Object.entries(freq)
+        .filter(([w]) => !STOPWORDS.has(w))
         .sort((a, b) => b[1] - a[1])
         .slice(0, 15)
         .map(([w]) => w);
