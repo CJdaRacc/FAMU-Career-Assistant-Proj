@@ -1219,7 +1219,7 @@ app.post("/api/resume/feedback", async (req, res) => {
 
     const prompt = [
       "You are an ATS-style resume analyzer.",
-      "Task: From the RESUME TEXT, identify and list the candidate's key skills with priority on technical skills (technologies, tools, frameworks, programming languages, cloud/DevOps, data/ML libraries, databases). Avoid soft skills (e.g., teamwork, communication) as keywords. Use these extracted technical skills as KEYWORDS.",
+      "Task: From the RESUME TEXT, identify and list the candidate's key skills with priority on technical skills (technologies, tools, frameworks, programming languages, cloud/DevOps, data/ML libraries, databases). Use these extracted technical skills as KEYWORDS.",
       "Then, for each job in SAVED JOBS, compute a match percentage (0-100) based on overlap between these KEYWORDS and the job text (title/company/description).",
       "For each job, include which KEYWORDS matched as matchedKeywords.",
       "Return strictly valid JSON only following this schema:",
