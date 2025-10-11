@@ -1187,11 +1187,14 @@ app.post("/api/resume/feedback", async (req, res) => {
     if (!Array.isArray(jobs) || jobs.length === 0) {
       const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
       const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
-      const baseKeywords = Object.entries(freq)
-        .filter(([w]) => !STOPWORDS.has(w))
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 15)
-        .map(([w]) => w);
+      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
+      entries.sort((a, b) => {
+        const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
+        const bs = b[1] + (TECH.test(b[0]) ? 5 : 0);
+        return bs - as;
+      });
+      const baseKeywords = entries.slice(0, 15).map(([w]) => w);
       appendEvent({ type: "resume_feedback_no_jobs_keywords_only", keywords: baseKeywords.length });
       return res.json({ keywords: baseKeywords, jobs: [], ai: false });
     }
@@ -1216,7 +1219,7 @@ app.post("/api/resume/feedback", async (req, res) => {
 
     const prompt = [
       "You are an ATS-style resume analyzer.",
-      "Task: From the RESUME TEXT, identify and list the candidate's key skills (technologies, tools, frameworks, programming languages, certifications, and relevant domain skills). Use these extracted skills as KEYWORDS.",
+      "Task: From the RESUME TEXT, identify and list the candidate's key skills with priority on technical skills (technologies, tools, frameworks, programming languages, cloud/DevOps, data/ML libraries, databases). Avoid soft skills (e.g., teamwork, communication) as keywords. Use these extracted technical skills as KEYWORDS.",
       "Then, for each job in SAVED JOBS, compute a match percentage (0-100) based on overlap between these KEYWORDS and the job text (title/company/description).",
       "For each job, include which KEYWORDS matched as matchedKeywords.",
       "Return strictly valid JSON only following this schema:",
@@ -1254,11 +1257,14 @@ app.post("/api/resume/feedback", async (req, res) => {
       // Fallback: derive keywords from resume text frequency
       const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
       const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
-      const baseKeywords = Object.entries(freq)
-        .filter(([w]) => !STOPWORDS.has(w))
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 15)
-        .map(([w]) => w);
+      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
+      entries.sort((a, b) => {
+        const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
+        const bs = b[1] + (TECH.test(b[0]) ? 5 : 0);
+        return bs - as;
+      });
+      const baseKeywords = entries.slice(0, 15).map(([w]) => w);
 
       const results = jobs.map((j, i) => {
         const textBlob = [j.title, j.company, j.description, j.reason]
