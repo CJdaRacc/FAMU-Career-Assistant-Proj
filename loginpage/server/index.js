@@ -1156,14 +1156,47 @@ app.post("/api/resume/extract", upload.single("file"), async (req, res) => {
 // Resume feedback endpoint using Gemini
 app.post("/api/resume/feedback", async (req, res) => {
   try {
-    const { resumeText, savedJobs } = req.body || {};
+    const { resumeText, savedJobs, compareToJobs } = req.body || {};
     const text = String(resumeText || "").trim();
     const jobs = Array.isArray(savedJobs) ? savedJobs : [];
+    const compare = typeof compareToJobs === "boolean" ? compareToJobs : true;
     if (!text) {
       return res.status(400).json({ message: "resumeText is required" });
     }
+
+    // Stopwords (lowercase) to exclude from heuristic keywords
+    const STOPWORDS = new Set([
+      "the","and","or","a","an","to","of","in","on","for","with","by","at","from","is","are","was","were","be","been","being","this","that","these","those","as","it","its","but","if","not","no","yes","you","your","we","our","they","their","he","she","him","her","them","i","me","my","mine","ours", "using", "time",
+    ]);
+
+    // If user opts not to compare to jobs, return keywords only
+    if (!compare) {
+      const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+      const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
+      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
+      entries.sort((a, b) => {
+        const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
+        const bs = b[1] + (TECH.test(b[0]) ? 5 : 0);
+        return bs - as;
+      });
+      const baseKeywords = entries.slice(0, 15).map(([w]) => w);
+      appendEvent({ type: "resume_feedback_keywords_only", keywords: baseKeywords.length });
+      return res.json({ keywords: baseKeywords, jobs: [], ai: false });
+    }
     if (!Array.isArray(jobs) || jobs.length === 0) {
-      return res.status(400).json({ message: "savedJobs (non-empty array) is required" });
+      const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+      const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
+      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
+      entries.sort((a, b) => {
+        const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
+        const bs = b[1] + (TECH.test(b[0]) ? 5 : 0);
+        return bs - as;
+      });
+      const baseKeywords = entries.slice(0, 15).map(([w]) => w);
+      appendEvent({ type: "resume_feedback_no_jobs_keywords_only", keywords: baseKeywords.length });
+      return res.json({ keywords: baseKeywords, jobs: [], ai: false });
     }
 
     const GEMINI_API_KEY = getGeminiApiKey();
@@ -1186,7 +1219,7 @@ app.post("/api/resume/feedback", async (req, res) => {
 
     const prompt = [
       "You are an ATS-style resume analyzer.",
-      "Task: From the RESUME TEXT, identify and list the candidate's key skills (technologies, tools, frameworks, programming languages, certifications, and relevant domain skills). Use these extracted skills as KEYWORDS.",
+      "Task: From the RESUME TEXT, identify and list the candidate's key skills with priority on technical skills (technologies, tools, frameworks, programming languages, cloud/DevOps, data/ML libraries, databases). Use these extracted technical skills as KEYWORDS.",
       "Then, for each job in SAVED JOBS, compute a match percentage (0-100) based on overlap between these KEYWORDS and the job text (title/company/description).",
       "For each job, include which KEYWORDS matched as matchedKeywords.",
       "Return strictly valid JSON only following this schema:",
@@ -1224,11 +1257,16 @@ app.post("/api/resume/feedback", async (req, res) => {
       // Fallback: derive keywords from resume text frequency
       const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
       const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
-      const baseKeywords = Object.entries(freq)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 15)
-        .map(([w]) => w);
+      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
+      entries.sort((a, b) => {
+        const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
+        const bs = b[1] + (TECH.test(b[0]) ? 5 : 0);
+        return bs - as;
+      });
+      const baseKeywords = entries.slice(0, 15).map(([w]) => w);
 
+      const baseSet = new Set(baseKeywords.map((k) => String(k).toLowerCase()));
       const results = jobs.map((j, i) => {
         const textBlob = [j.title, j.company, j.description, j.reason]
           .map((s) => (s || "").toString().toLowerCase())
@@ -1236,12 +1274,19 @@ app.post("/api/resume/feedback", async (req, res) => {
         const matched = baseKeywords.filter((k) => textBlob.includes(k.toLowerCase()));
         const denom = Math.max(5, baseKeywords.length || 1);
         const score = Math.round((matched.length / denom) * 100);
+        // Derive up to 4 missing keywords from the job text (tech-focused) that are not present in resume keywords
+        const jobWords = textBlob.match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+        const jobTech = Array.from(new Set(jobWords))
+          .filter((w) => !STOPWORDS.has(w))
+          .filter((w) => TECH.test(w));
+        const missingKeywords = jobTech.filter((w) => !baseSet.has(w)).slice(0, 4);
         return {
           id: j.id ?? i,
           title: j.title || j.name || "",
           company: j.company || j.org || "",
           score: Math.max(0, Math.min(100, score)),
           matchedKeywords: matched,
+          missingKeywords,
           notes: "Heuristic fallback based on resume keywords."
         };
       });
@@ -1264,7 +1309,26 @@ app.post("/api/resume/feedback", async (req, res) => {
     }));
 
     const filteredKeywords = keywords;
-    const results = resultsRaw;
+    const resumeSet = new Set(filteredKeywords.map((k) => String(k).toLowerCase()));
+    const results = resultsRaw.map((r, i) => {
+      const jobBlob = [jobs[i]?.title, jobs[i]?.company, jobs[i]?.description, jobs[i]?.reason]
+        .map((s) => (s || "").toString().toLowerCase())
+        .join(" ");
+      const jobWords = jobBlob.match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+      const jobTech = Array.from(new Set(jobWords))
+        .filter((w) => w && !w.includes("@"))
+        .filter((w) => !w.includes("http"))
+        .filter((w) => !w.includes("www"))
+        .filter((w) => !w.includes(".com"))
+        .filter((w) => !w.includes(".io"))
+        .filter((w) => !w.includes(".org"))
+        .filter((w) => !w.includes(".net"))
+        .filter((w) => !w.includes(".edu"))
+        .filter((w) => !STOPWORDS.has(w))
+        .filter((w) => /^(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)$/i.test(w));
+      const missingKeywords = jobTech.filter((w) => !resumeSet.has(w)).slice(0, 4);
+      return { ...r, missingKeywords };
+    });
 
     appendEvent({ type: "resume_feedback_ok", jobs: results.length });
     return res.json({ keywords: filteredKeywords, jobs: results, ai: true });
