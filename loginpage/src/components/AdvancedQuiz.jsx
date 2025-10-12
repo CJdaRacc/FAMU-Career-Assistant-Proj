@@ -172,20 +172,81 @@ export default function AdvancedQuiz({ user, onDone }) {
                       specific role.
                     </div>
                   </div>
-                  {genericQs.map((q, idx) => (
-                    <div className="mb-3" key={idx}>
-                      <label className="form-label fw-semibold">
-                        {idx + 1}. {q}
-                      </label>
-                      <input
-                        className="form-control"
-                        type="text"
-                        value={genericAns[idx] || ""}
-                        onChange={(e) => updateGeneric(idx, e.target.value)}
-                        placeholder="Your answer..."
-                      />
-                    </div>
-                  ))}
+                  {genericQs.map((q, idx) => {
+                    const checkboxIndices = new Set([0, 1, 2]); // Questions 1,2,3 as 2x2 checkboxes
+                    const isSliderQ = idx === 5; // Question 6: slider 1–60 hours
+                    const isCheckboxQ = checkboxIndices.has(idx);
+                    const options =
+                      idx === 0
+                        ? ["Remote", "Hybrid", "On-Site", "Other"]
+                        : idx === 1
+                        ? ["Startup", "Mid-Size", "Large Enterprise", "Other"]
+                        : idx === 2
+                        ? ["Intership", "Full time", "Research", "Freelance"]
+                        : ["Option A", "Option B", "Option C", "Option D"];
+
+                    const selected = (genericAns[idx] || "").split("; ").filter(Boolean);
+                    const toggleSelect = (opt) => {
+                      const set = new Set(selected);
+                      if (set.has(opt)) set.delete(opt);
+                      else set.add(opt);
+                      const joined = Array.from(set).join("; ");
+                      updateGeneric(idx, joined);
+                    };
+
+                    return (
+                      <div className="mb-3" key={idx}>
+                        <label className="form-label fw-semibold">
+                          {idx + 1}. {q}
+                        </label>
+
+                        {isCheckboxQ ? (
+                          <div className="container px-0">
+                            <div className="row g-2">
+                              {options.map((opt, i) => (
+                                <div className="col-12 col-sm-6" key={i}>
+                                  <div className="form-check">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      id={`q${idx}-opt${i}`}
+                                      checked={selected.includes(opt)}
+                                      onChange={() => toggleSelect(opt)}
+                                    />
+                                    <label className="form-check-label" htmlFor={`q${idx}-opt${i}`}>
+                                      {opt}
+                                    </label>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : isSliderQ ? (
+                          <div className="d-flex align-items-center gap-3">
+                            <input
+                              className="form-range"
+                              type="range"
+                              min="1"
+                              max="60"
+                              step="1"
+                              id={`q${idx}-slider`}
+                              value={Number(genericAns[idx] || 1)}
+                              onChange={(e) => updateGeneric(idx, String(e.target.value))}
+                            />
+                            <span style={{ minWidth: 70 }}>{Number(genericAns[idx] || 1)} hrs</span>
+                          </div>
+                        ) : (
+                          <input
+                            className="form-control"
+                            type="text"
+                            value={genericAns[idx] || ""}
+                            onChange={(e) => updateGeneric(idx, e.target.value)}
+                            placeholder="Your answer..."
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                   <button
                     className="btn btn-primary"
                     onClick={handleGenerate}
