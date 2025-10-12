@@ -148,9 +148,9 @@ export default function JobPostings({ user }) {
   };
 
   useEffect(() => {
-    fetchItems();
-    // seed sample postings if empty (non-blocking)
-    (async () => {
+    const seedThenFetch = async () => {
+      // Seed sample postings if the database is empty.
+      // This is done first to avoid a race condition where items are fetched before seeding is complete.
       try {
         const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
         await fetch(`${base}/api/job-postings`, {
@@ -158,8 +158,15 @@ export default function JobPostings({ user }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ seed: true }),
         });
-      } catch {}
-    })();
+      } catch (e) {
+        // It's okay if this fails (e.g., jobs already exist).
+        console.info("Job seeding may have been skipped if data already exists.");
+      }
+      // Now, fetch the items.
+      fetchItems();
+    };
+
+    seedThenFetch();
   }, [userId]);
 
   // infer a coarse "role" from title
