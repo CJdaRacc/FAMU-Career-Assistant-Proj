@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       "/api": {
         // Use 127.0.0.1 to avoid potential IPv6/localhost resolution issues on Windows
-        target: "http://127.0.0.1:5173",
+        target: "http://127.0.0.1:5000",
         changeOrigin: true,
       },
     },
