@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Login from "./components/Login.jsx";
 import Quiz from "./components/Quiz.jsx";
 import Dashboard from "./components/Dashboard.jsx";
-import AdvancedQuiz from "./components/AdvancedQuiz.jsx";
+import AIQuestions from "./components/AIQuestions.jsx";
 import AdvancedReview from "./components/AdvancedReview.jsx";
 import Navbar from "./components/Navbar.jsx";
 import JobMatches from "./components/JobMatches.jsx";
@@ -55,7 +55,7 @@ function App() {
 
   let content = null;
   if (route.startsWith("#/advanced")) {
-    content = <AdvancedQuiz user={user} onDone={handleQuestionnaireDone} />;
+    content = <AIQuestions user={user} onDone={handleQuestionnaireDone} />;
   } else if (route.startsWith("#/myqa")) {
     content = <AdvancedReview user={user} />;
   } else if (route.startsWith("#/jobs")) {

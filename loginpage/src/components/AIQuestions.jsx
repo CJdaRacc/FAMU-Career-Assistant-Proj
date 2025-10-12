@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-// Client for advanced questionnaire (6 generic + 8 AI questions)
-// Usage: <AdvancedQuiz user={user} onDone={() => navigate('/dashboard')} />
-export default function AdvancedQuiz({ user, onDone }) {
+// Client for AI Questions (6 generic + 8 AI questions)
+// Usage: <AIQuestions user={user} onDone={() => navigate('/dashboard')} />
+export default function AIQuestions({ user, onDone }) {
   const [genericQs, setGenericQs] = useState([]);
   const [genericAns, setGenericAns] = useState([]);
   const [aiQs, setAiQs] = useState([]);
@@ -138,7 +138,7 @@ export default function AdvancedQuiz({ user, onDone }) {
           <div className="card shadow-sm">
             <div className="card-body p-4">
               <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
-                In-Depth Career Questionnaire
+                AI Questions
               </h2>
               <p className="text-muted">
                 Answer 6 starter questions. We’ll then generate 8 personalized

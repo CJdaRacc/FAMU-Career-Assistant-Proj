@@ -52,7 +52,7 @@ export default function Navbar({ user, onLogout }) {
                 className="nav-link btn btn-link text-white-50"
                 onClick={() => go("#/advanced")}
               >
-                Advanced Questionnaire
+                AI Questions
               </button>
             </li>
             <li className="nav-item">
