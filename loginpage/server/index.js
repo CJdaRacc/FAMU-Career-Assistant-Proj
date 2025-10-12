@@ -1266,6 +1266,7 @@ app.post("/api/resume/feedback", async (req, res) => {
       });
       const baseKeywords = entries.slice(0, 15).map(([w]) => w);
 
+      const baseSet = new Set(baseKeywords.map((k) => String(k).toLowerCase()));
       const results = jobs.map((j, i) => {
         const textBlob = [j.title, j.company, j.description, j.reason]
           .map((s) => (s || "").toString().toLowerCase())
@@ -1273,12 +1274,19 @@ app.post("/api/resume/feedback", async (req, res) => {
         const matched = baseKeywords.filter((k) => textBlob.includes(k.toLowerCase()));
         const denom = Math.max(5, baseKeywords.length || 1);
         const score = Math.round((matched.length / denom) * 100);
+        // Derive up to 4 missing keywords from the job text (tech-focused) that are not present in resume keywords
+        const jobWords = textBlob.match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+        const jobTech = Array.from(new Set(jobWords))
+          .filter((w) => !STOPWORDS.has(w))
+          .filter((w) => TECH.test(w));
+        const missingKeywords = jobTech.filter((w) => !baseSet.has(w)).slice(0, 4);
         return {
           id: j.id ?? i,
           title: j.title || j.name || "",
           company: j.company || j.org || "",
           score: Math.max(0, Math.min(100, score)),
           matchedKeywords: matched,
+          missingKeywords,
           notes: "Heuristic fallback based on resume keywords."
         };
       });
@@ -1301,7 +1309,26 @@ app.post("/api/resume/feedback", async (req, res) => {
     }));
 
     const filteredKeywords = keywords;
-    const results = resultsRaw;
+    const resumeSet = new Set(filteredKeywords.map((k) => String(k).toLowerCase()));
+    const results = resultsRaw.map((r, i) => {
+      const jobBlob = [jobs[i]?.title, jobs[i]?.company, jobs[i]?.description, jobs[i]?.reason]
+        .map((s) => (s || "").toString().toLowerCase())
+        .join(" ");
+      const jobWords = jobBlob.match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
+      const jobTech = Array.from(new Set(jobWords))
+        .filter((w) => w && !w.includes("@"))
+        .filter((w) => !w.includes("http"))
+        .filter((w) => !w.includes("www"))
+        .filter((w) => !w.includes(".com"))
+        .filter((w) => !w.includes(".io"))
+        .filter((w) => !w.includes(".org"))
+        .filter((w) => !w.includes(".net"))
+        .filter((w) => !w.includes(".edu"))
+        .filter((w) => !STOPWORDS.has(w))
+        .filter((w) => /^(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)$/i.test(w));
+      const missingKeywords = jobTech.filter((w) => !resumeSet.has(w)).slice(0, 4);
+      return { ...r, missingKeywords };
+    });
 
     appendEvent({ type: "resume_feedback_ok", jobs: results.length });
     return res.json({ keywords: filteredKeywords, jobs: results, ai: true });

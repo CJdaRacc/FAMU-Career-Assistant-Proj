@@ -383,6 +383,14 @@ export default function ResumeFeedback({ user }) {
                     ))}
                   </div>
 
+                  {resumeText ? (
+                    <details className="mb-3">
+                      <summary><strong>Resume preview with highlighted keywords</strong></summary>
+                      <div className="mt-2 small text-muted">We highlight your detected keywords inside your resume text (Experience and Skills sections are prioritized when detected).</div>
+                      <div className="border rounded p-2 mt-2" dangerouslySetInnerHTML={{ __html: buildHighlightedResume(resumeText, result.keywords || []) }} />
+                    </details>
+                  ) : null}
+
                   {Array.isArray(result.jobs) && result.jobs.length > 0 ? (
                     <>
                       <h5>Match Scores</h5>
@@ -406,6 +414,16 @@ export default function ResumeFeedback({ user }) {
                                 <div>
                                   {r.matchedKeywords.map((k, i) => (
                                     <span key={i} className="badge text-bg-light border me-1 mb-1">{k}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+                            {r.missingKeywords?.length ? (
+                              <div className="mt-2">
+                                <div className="small text-muted">Unmatched keywords:</div>
+                                <div>
+                                  {r.missingKeywords.slice(0, 4).map((k, i) => (
+                                    <span key={i} className="badge text-bg-danger me-1 mb-1">{k}</span>
                                   ))}
                                 </div>
                               </div>
