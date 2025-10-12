@@ -73,6 +73,8 @@ Routes after login/registration:
 - #/advanced — Advanced Questionnaire (6 generic questions → 8 AI-generated, role-focused follow-ups)
 - #/myqa — My Q&A (user-only view of saved questions and answers)
 - #/jobs — Job Matches (displays Gemini-generated matches as Bootstrap progress bars)
+- #/resume-feedback — Resume Feedback (upload or paste resume, extract keywords, and compare to your saved jobs; shows unmatched keywords in red and highlights them in your resume preview)
+- #/job-postings — Sample job postings list with match percent indicators based on your latest job match session
 
 Typical flow:
 1) Register or Login
@@ -99,6 +101,20 @@ Typical flow:
    - Generates a list of personalized jobs using your profile and advanced questionnaire answers (via Gemini).
    - If you have a saved profile but no matches yet, the page can auto-generate on first visit.
    - You can also click Generate/Regenerate to refresh matches. Results render as bar graphs with match percentages and reasons.
+
+## 6) Resume Feedback (#/resume-feedback)
+- Upload a PDF or DOCX resume (client sends to /api/resume/extract) or paste your resume text directly.
+- Click Analyze to extract technical keywords and optionally compare them to your saved jobs.
+- When comparing to saved jobs, the UI shows:
+  - Match percentage per job
+  - Matched keywords
+  - Unmatched keywords (up to 4) in red badges
+  - A resume preview with detected keywords highlighted in-line (Experience and Skills sections prioritized when detected)
+- If you opt to extract keywords only (no job comparison), the server returns a ranked keyword list without job scores.
+
+Notes:
+- Comparing against jobs requires at least one saved job in the app.
+- Gemini API key is required when using the AI-based analysis path; otherwise, the server falls back to a heuristic keyword extraction method.
 
 ## 5) API quick tests (optional)
 Run these from a terminal in the loginpage directory while Vite is running (proxy to 127.0.0.1:5000):
@@ -152,6 +168,37 @@ curl -X POST http://localhost:5173/api/jobs/generate \
 
 # Fetch latest job matches
 curl http://localhost:5173/api/jobs/my?userId=USER_ID
+```
+
+Resume text extraction (PDF/DOCX → text):
+```
+# Using curl with a sample PDF or DOCX in the current directory
+curl -X POST http://localhost:5173/api/resume/extract \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@./resume.pdf"
+```
+
+Resume feedback (compare to jobs or keywords-only):
+```
+# Compare to saved jobs: provide jobs array (simplified example)
+curl -X POST http://localhost:5173/api/resume/feedback \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resumeText": "Experienced with Python, SQL, React, and AWS...",
+    "savedJobs": [
+      {"id":"1","title":"Software Engineering Intern","company":"TechNova","description":"Looking for React, Node.js, AWS"}
+    ],
+    "compareToJobs": true
+  }'
+
+# Keywords only (no job comparison)
+curl -X POST http://localhost:5173/api/resume/feedback \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resumeText": "Experienced with Python, SQL, React, and AWS...",
+    "savedJobs": [],
+    "compareToJobs": false
+  }'
 ```
 
 If you prefer to hit the backend directly (bypassing Vite), use http://127.0.0.1:5000 instead of http://localhost:5173 and run the server with:
