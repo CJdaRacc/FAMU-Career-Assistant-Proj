@@ -70,7 +70,7 @@ function App() {
     content = <Save user={user} />;
   } else if (route.startsWith("#/job-postings")) {
     content = <JobPostings user={user} />;
-section} else if (route.startsWith("#/resume-feedback")) {
+  } else if (route.startsWith("#/resume-feedback")) {
     content = <ResumeFeedback user={user} />;
   } else {
     content = <Login onAuth={handleAuth} />;
