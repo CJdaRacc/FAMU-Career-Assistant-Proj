@@ -94,8 +94,8 @@ export default function Quiz({ user, onDone }) {
       setError("You must be logged in to complete your profile.");
       return;
     }
-    if (!major.trim()) {
-      setError("Please enter your major.");
+    if (selectedFields.length === 0) {
+      setError("Please select at least one major.");
       return;
     }
     if (!classYear) {
@@ -120,7 +120,7 @@ export default function Quiz({ user, onDone }) {
     try {
       const payload = {
         userId: user.userId,
-        major: major.trim(),
+        major: selectedFields.join(", "),
         interests: finalInterests,
         classYear,
       };
@@ -151,8 +151,7 @@ export default function Quiz({ user, onDone }) {
                 Student Profile Setup
               </h2>
               <p className="text-muted">
-                Tell us your major, general fields of study, related interests,
-                and class year.
+                Tell us your major, related interests, and class year.
               </p>
               {error && (
                 <div className="alert alert-danger py-2" role="alert">
@@ -160,25 +159,10 @@ export default function Quiz({ user, onDone }) {
                 </div>
               )}
               <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold" htmlFor="major">
-                    Major
-                  </label>
-                  <input
-                    id="major"
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g., Computer Science"
-                    value={major}
-                    onChange={(e) => setMajor(e.target.value)}
-                    required
-                  />
-                </div>
-
                 {/* General fields as checkboxes */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
-                    General Fields of Study
+                    Major
                   </label>
                   <div className="row">
                     {fieldNames.map((field) => (

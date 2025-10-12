@@ -259,3 +259,33 @@ body {
     flex: 0 0 auto;
   }
 }
+/* 🔶 Accessibility: clean, modern FAMU focus outline */
+:focus {
+    outline: none !important;
+    border-radius: 6px;
+    box-shadow: 0 0 0 2px rgba(255, 136, 0, 0.7),
+    0 0 8px rgba(255, 136, 0, 0.4);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+    scroll-margin: 100px;
+    transform: scale(1.02); /* subtle lift on focus */
+}
+
+/* Keep clarity for keyboard users */
+button:focus,
+a:focus,
+input:focus,
+select:focus {
+    box-shadow: 0 0 0 2px rgba(255, 136, 0, 0.8),
+    0 0 6px rgba(255, 136, 0, 0.35);
+}
+
+/* Optional hover style: smoother, no harsh dashed lines */
+button:hover,
+a:hover,
+input:hover,
+select:hover {
+    outline: none;
+    box-shadow: 0 0 6px rgba(255, 136, 0, 0.4);
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
