@@ -10,6 +10,7 @@ import JobMatches from "./components/JobMatches.jsx";
 import Save from "./components/SavePage.jsx";
 import JobPostings from "./components/JobPostings.jsx";
 import ResumeFeedback from "./components/ResumeFeedback.jsx";
+import JobMatcher from "./components/JobMatcher.jsx";
 
 function App() {
   const [route, setRoute] = useState(window.location.hash || "#/login");
@@ -59,6 +60,8 @@ function App() {
     content = <AdvancedReview user={user} />;
   } else if (route.startsWith("#/jobs")) {
     content = <JobMatches user={user} />;
+  } else if (route.startsWith("#/job-matcher")) {
+    content = <JobMatcher user={user} />;
   } else if (route.startsWith("#/quiz")) {
     content = <Quiz user={user} onDone={handleQuestionnaireDone} />;
   } else if (route.startsWith("#/dashboard")) {
@@ -67,7 +70,7 @@ function App() {
     content = <Save user={user} />;
   } else if (route.startsWith("#/job-postings")) {
     content = <JobPostings user={user} />;
-  } else if (route.startsWith("#/resume-feedback")) {
+section} else if (route.startsWith("#/resume-feedback")) {
     content = <ResumeFeedback user={user} />;
   } else {
     content = <Login onAuth={handleAuth} />;
