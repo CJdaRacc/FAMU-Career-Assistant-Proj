@@ -11,6 +11,7 @@ export default function AIQuestions({ user, onDone }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [targetCareer, setTargetCareer] = useState(""); // optional focus
+  const [otherInputs, setOtherInputs] = useState({}); // per-question text for "Other"
 
   const canGenerate = useMemo(
     () =>
@@ -185,13 +186,42 @@ export default function AIQuestions({ user, onDone }) {
                         ? ["Intership", "Full time", "Research", "Freelance"]
                         : ["Option A", "Option B", "Option C", "Option D"];
 
-                    const selected = (genericAns[idx] || "").split("; ").filter(Boolean);
+                    const tokens = (genericAns[idx] || "").split("; ").filter(Boolean);
+                    const hasOther = tokens.some((t) => t === "Other" || t.startsWith("Other:"));
+                    const otherToken = tokens.find((t) => t.startsWith("Other:"));
+                    const otherValueFromAns = otherToken ? otherToken.slice(6).trim().replace(/^:\s*/, "") : "";
+                    const otherText = otherInputs[idx] ?? otherValueFromAns;
+
                     const toggleSelect = (opt) => {
-                      const set = new Set(selected);
-                      if (set.has(opt)) set.delete(opt);
-                      else set.add(opt);
-                      const joined = Array.from(set).join("; ");
-                      updateGeneric(idx, joined);
+                      let nextTokens = [...tokens];
+                      if (opt === "Other") {
+                        // Remove any existing Other token
+                        nextTokens = nextTokens.filter((t) => !(t === "Other" || t.startsWith("Other:")));
+                        if (!hasOther) {
+                          // Add a placeholder Other token; will be replaced by typed value if provided
+                          nextTokens.push(otherText ? `Other: ${otherText}` : "Other");
+                        } else {
+                          // Toggling off Other clears stored text
+                          setOtherInputs((prev) => ({ ...prev, [idx]: "" }));
+                        }
+                      } else {
+                        const i = nextTokens.indexOf(opt);
+                        if (i >= 0) nextTokens.splice(i, 1);
+                        else nextTokens.push(opt);
+                      }
+                      updateGeneric(idx, nextTokens.join("; "));
+                    };
+
+                    const handleOtherChange = (val) => {
+                      setOtherInputs((prev) => ({ ...prev, [idx]: val }));
+                      // Update the answer string with the latest Other value if Other is selected
+                      let nextTokens = tokens.filter((t) => !(t === "Other" || t.startsWith("Other:")));
+                      if (hasOther) {
+                        const trimmedVal = val.trim();
+                        // Keep a token even if empty to preserve selection; backend expects non-empty answer overall
+                        nextTokens.push(trimmedVal ? `Other: ${trimmedVal}` : "Other");
+                        updateGeneric(idx, nextTokens.join("; "));
+                      }
                     };
 
                     return (
@@ -210,12 +240,27 @@ export default function AIQuestions({ user, onDone }) {
                                       className="form-check-input"
                                       type="checkbox"
                                       id={`q${idx}-opt${i}`}
-                                      checked={selected.includes(opt)}
+                                      checked={
+                                        opt === "Other"
+                                          ? hasOther
+                                          : tokens.includes(opt)
+                                      }
                                       onChange={() => toggleSelect(opt)}
                                     />
                                     <label className="form-check-label" htmlFor={`q${idx}-opt${i}`}>
                                       {opt}
                                     </label>
+                                    {opt === "Other" && hasOther && (
+                                      <div className="mt-2">
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          placeholder="Please specify..."
+                                          value={otherText}
+                                          onChange={(e) => handleOtherChange(e.target.value)}
+                                        />
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
