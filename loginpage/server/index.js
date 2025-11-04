@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import https from "https";
 import multer from "multer";
 import mammoth from "mammoth";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
@@ -1339,8 +1340,30 @@ app.post("/api/resume/feedback", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+// Start HTTP or HTTPS server based on env SSL_CERT_PATH/SSL_KEY_PATH
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || "";
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || "";
+const SSL_CA_PATH = process.env.SSL_CA_PATH || "";
+
+function afterStart(protocol) {
+  const base = `${protocol}://localhost:${PORT}`;
+  console.log(`Server listening on ${base}`);
   console.log(`Logging events to: ${LOG_FILE}`);
   console.log(`Gemini API key configured: ${getGeminiApiKey() ? "yes" : "no"}`);
-});
+}
+
+if (SSL_CERT_PATH && SSL_KEY_PATH && fs.existsSync(SSL_CERT_PATH) && fs.existsSync(SSL_KEY_PATH)) {
+  try {
+    const options = {
+      key: fs.readFileSync(SSL_KEY_PATH),
+      cert: fs.readFileSync(SSL_CERT_PATH),
+      ca: SSL_CA_PATH && fs.existsSync(SSL_CA_PATH) ? fs.readFileSync(SSL_CA_PATH) : undefined,
+    };
+    https.createServer(options, app).listen(PORT, () => afterStart("https"));
+  } catch (e) {
+    console.error("Failed to start HTTPS server, falling back to HTTP:", e?.message || e);
+    app.listen(PORT, () => afterStart("http"));
+  }
+} else {
+  app.listen(PORT, () => afterStart("http"));
+}

@@ -26,6 +26,23 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+        cache-dependency-path: |
+          loginpage/package-lock.json
+
+    # Install frontend + backend deps (single workspace under ./loginpage)
+    - name: Install Dependencies (loginpage)
+      run: npm ci --prefix loginpage
+
+    # Lint and format check
+    - name: Lint
+      run: npm run lint --if-present --prefix loginpage
+    - name: Prettier Check
+      run: npm run format:check --if-present --prefix loginpage
+
+    # Run unit tests (Vitest) in CI mode
+    - name: Run Tests (Vitest CI)
+      run: npm run test:ci --if-present --prefix loginpage
+
+    # Build frontend with Vite to ensure it is deployable
+    - name: Build Frontend with Vite
+      run: npm run build --prefix loginpage
