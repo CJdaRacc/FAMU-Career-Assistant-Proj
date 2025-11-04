@@ -12,15 +12,12 @@ export default function Login({ onAuth }) {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/${mode}`, {
+      const { fetchJson } = await import("../lib/fetchJson.js");
+      const data = await fetchJson(`/api/${mode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.message || "Request failed");
-      }
       setMessage({
         type: "success",
         text: data?.message || `${mode} successful`,
@@ -30,9 +27,10 @@ export default function Login({ onAuth }) {
         onAuth(data);
       }
     } catch (err) {
+      const msg = err?.message || "Something went wrong";
       setMessage({
         type: "error",
-        text: err.message || "Something went wrong",
+        text: msg,
       });
     } finally {
       setLoading(false);

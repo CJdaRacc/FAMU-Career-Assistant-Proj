@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import https from "https";
+import crypto from "crypto";
 import multer from "multer";
 import mammoth from "mammoth";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
@@ -58,6 +59,19 @@ function appendEvent(event) {
     console.error("Failed to write log event:", e);
   }
 }
+
+// Process-level safety nets
+process.on('unhandledRejection', (reason) => {
+  try { appendEvent({ type: 'unhandled_rejection', error: String((reason && reason.message) || reason) }); } catch {}
+  console.error('Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  try { appendEvent({ type: 'uncaught_exception', error: err?.message }); } catch {}
+  console.error('Uncaught Exception:', err);
+});
+
+// Async route wrapper
+const wrapAsync = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 app.use(cors());
 app.use(express.json());
@@ -1337,6 +1351,21 @@ app.post("/api/resume/feedback", async (req, res) => {
     console.error("Resume feedback error:", err);
     appendEvent({ type: "resume_feedback_exception", error: err?.message });
     return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Centralized error handling middleware (must be registered after routes)
+app.use((err, req, res, next) => {
+  try {
+    const status = err?.statusCode || err?.status || 500;
+    const traceId = (crypto.randomUUID && crypto.randomUUID()) || Date.now().toString(36);
+    const code = err?.code || (status === 500 ? "internal_error" : "request_error");
+    const msg = status === 500 && process.env.NODE_ENV === "production" ? "Server error" : (err?.message || "Request failed");
+    appendEvent({ type: "http_error", status, path: req.path, method: req.method, code, traceId, msg });
+    res.status(status).json({ error: { code, message: msg, traceId } });
+  } catch (middlewareErr) {
+    console.error("Error in error middleware:", middlewareErr);
+    res.status(500).json({ error: { code: "internal_error", message: "Server error" } });
   }
 });
 
