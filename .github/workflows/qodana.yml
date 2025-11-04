@@ -1,0 +1,40 @@
+# Qodana CI: Runs JetBrains code inspections on every push/PR
+# Docs: https://www.jetbrains.com/help/qodana/github.html
+name: Qodana Code Inspection
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Allow manual runs
+  workflow_dispatch:
+
+# Needed to upload SARIF results to GitHub Code Scanning
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Run Qodana using the configuration from qodana.yaml at the repo root
+      - name: Qodana Scan
+        uses: JetBrains/qodana-action@v2025.1
+        with:
+          # Upload results to GitHub Code Scanning (SARIF)
+          upload-result: true
+          # Reuse caches between runs to speed up analysis
+          use-caches: true
+          # By default, the action looks for qodana.yaml in the repository root.
+          # If you later move it under a subdirectory, set `project-dir` accordingly.
+          # project-dir: .
+        env:
+          # Optional: set if you connect the repo to Qodana Cloud
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}

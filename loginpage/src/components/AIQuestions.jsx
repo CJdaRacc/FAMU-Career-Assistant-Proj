@@ -12,6 +12,7 @@ export default function AIQuestions({ user, onDone }) {
   const [error, setError] = useState(null);
   const [targetCareer, setTargetCareer] = useState(""); // optional focus
   const [otherInputs, setOtherInputs] = useState({}); // per-question text for "Other"
+  const [useTargetCareer, setUseTargetCareer] = useState(true); // toggle for Target Career field
 
   const canGenerate = useMemo(
     () =>
@@ -82,7 +83,10 @@ export default function AIQuestions({ user, onDone }) {
         body: JSON.stringify({
           userId: user.userId,
           genericAnswers: genericAns,
-          targetCareer: targetCareer.trim() || undefined,
+          targetCareer:
+            useTargetCareer && targetCareer.trim()
+              ? targetCareer.trim()
+              : undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -154,12 +158,27 @@ export default function AIQuestions({ user, onDone }) {
               {stage === "generic" && (
                 <div>
                   <div className="mb-3">
-                    <label
-                      className="form-label fw-semibold"
-                      htmlFor="targetCareer"
-                    >
-                      Target Career (optional)
-                    </label>
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <label
+                        className="form-label fw-semibold m-0"
+                        htmlFor="targetCareer"
+                      >
+                        Target Career (optional)
+                      </label>
+                      <div className="form-check form-switch">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="useTargetCareer"
+                          checked={useTargetCareer}
+                          onChange={(e) => setUseTargetCareer(e.target.checked)}
+                          aria-label="Toggle target career focus"
+                        />
+                        <label className="form-check-label" htmlFor="useTargetCareer">
+                          {useTargetCareer ? "On" : "Off"}
+                        </label>
+                      </div>
+                    </div>
                     <input
                       id="targetCareer"
                       className="form-control"
@@ -167,10 +186,13 @@ export default function AIQuestions({ user, onDone }) {
                       value={targetCareer}
                       onChange={(e) => setTargetCareer(e.target.value)}
                       placeholder="e.g., Data Analyst, UX Designer, Supply Chain Analyst"
+                      disabled={!useTargetCareer}
+                      aria-disabled={!useTargetCareer}
                     />
                     <div className="form-text">
-                      If provided, follow-up questions will be focused on this
-                      specific role.
+                      {useTargetCareer
+                        ? "If provided, follow-up questions will be focused on this specific role."
+                        : "Turn on the switch to focus questions on a specific target role."}
                     </div>
                   </div>
                   {genericQs.map((q, idx) => {
@@ -269,14 +291,38 @@ export default function AIQuestions({ user, onDone }) {
                         ) : isSliderQ ? (
                           <div className="d-flex align-items-center gap-3">
                             <input
-                              className="form-range"
-                              type="range"
+                              className="form-control"
+                              type="number"
                               min="1"
                               max="60"
                               step="1"
-                              id={`q${idx}-slider`}
-                              value={Number(genericAns[idx] || 1)}
-                              onChange={(e) => updateGeneric(idx, String(e.target.value))}
+                              id={`q${idx}-num`}
+                              value={genericAns[idx] ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === "") {
+                                  updateGeneric(idx, "");
+                                } else {
+                                  const n = Number(v);
+                                  if (!Number.isNaN(n)) {
+                                    updateGeneric(idx, String(n));
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const v = e.target.value;
+                                if (v !== "") {
+                                  let n = Number(v);
+                                  if (Number.isNaN(n)) n = 1;
+                                  if (n < 1) n = 1;
+                                  if (n > 60) n = 60;
+                                  updateGeneric(idx, String(n));
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault();
+                              }}
+                              inputMode="numeric"
                             />
                             <span style={{ minWidth: 70 }}>{Number(genericAns[idx] || 1)} hrs</span>
                           </div>
