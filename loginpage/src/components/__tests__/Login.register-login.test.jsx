@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Login from '../Login.jsx'
 
@@ -8,7 +8,7 @@ function setup(onAuth = vi.fn()) {
   render(<Login onAuth={onAuth} />)
   const email = screen.getByLabelText(/email/i)
   const password = screen.getByLabelText(/password/i)
-  const submit = screen.getByRole('button', { name: /login|create account/i })
+  const submit = screen.getAllByTestId('auth-submit').at(-1)
   return { email, password, submit, onAuth }
 }
 

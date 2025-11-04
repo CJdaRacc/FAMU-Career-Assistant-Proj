@@ -74,7 +74,7 @@ export default function Login({ onAuth }) {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="mt-3">
+                <form onSubmit={handleSubmit} className="mt-3" role="form" aria-label={`auth-${mode}-form`}>
                   <div className="mb-3">
                     <label htmlFor="email" className="form-label">
                       Email
@@ -121,6 +121,7 @@ export default function Login({ onAuth }) {
                     type="submit"
                     className="btn btn-primary w-100"
                     disabled={loading}
+                    data-testid="auth-submit"
                   >
                     {loading ? (
                       <>
