@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import 'whatwg-fetch';
 import { setupServer } from 'msw/node';
 import { handlers as defaultHandlers } from './msw/handlers';
