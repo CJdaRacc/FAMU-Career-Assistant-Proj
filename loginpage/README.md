@@ -8,19 +8,6 @@ A minimal MERN application that provides:
 
 This project is structured as a single app inside `loginpage/` that contains both the Vite React frontend and the Express backend.
 
-## Project structure
-
-```
-/ (repo root)
-└─ loginpage/
-   ├─ public/
-   ├─ src/            # React frontend (Vite)
-   ├─ server/         # Node/Express API
-   ├─ .env            # Your environment (optional)
-   ├─ package.json    # One package.json for both frontend and backend
-   └─ server/data/events.log (created on demand)
-```
-
 ## Prerequisites
 
 - Node.js 18+
