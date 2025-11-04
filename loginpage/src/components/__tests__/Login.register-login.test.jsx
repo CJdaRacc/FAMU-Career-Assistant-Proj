@@ -8,7 +8,7 @@ function setup(onAuth = vi.fn()) {
   render(<Login onAuth={onAuth} />)
   const email = screen.getByLabelText(/email/i)
   const password = screen.getByLabelText(/password/i)
-  const submit = screen.getAllByTestId('auth-submit').at(-1)
+  const submit = screen.getAllByRole('button', { name: /login|create account/i }).at(-1)
   return { email, password, submit, onAuth }
 }
 
@@ -17,7 +17,7 @@ describe('Login/Register flows (register first, then login)', () => {
     const ui = setup()
 
     // Switch to Register
-    await userEvent.click(screen.getByRole('button', { name: /register/i }))
+    await userEvent.click(screen.getAllByRole('button', { name: /register/i }).at(-1))
 
     await userEvent.type(ui.email, 'user@example.com')
     await userEvent.type(ui.password, 'Passw0rd!')
@@ -29,7 +29,7 @@ describe('Login/Register flows (register first, then login)', () => {
     expect(screen.getByText(/register successful/i)).toBeInTheDocument()
 
     // Now go to Login
-    await userEvent.click(screen.getByRole('button', { name: /^login$/i }))
+    await userEvent.click(screen.getAllByRole('button', { name: /^login$/i }).at(-1))
     await userEvent.clear(ui.email)
     await userEvent.clear(ui.password)
     await userEvent.type(ui.email, 'user@example.com')
@@ -48,9 +48,9 @@ describe('Login/Register flows (register first, then login)', () => {
     const ui = setup()
 
     // Toggle a couple times
-    await userEvent.click(screen.getAllByTestId('toggle-register').at(-1))
-    await userEvent.click(screen.getAllByTestId('toggle-login').at(-1))
-    await userEvent.click(screen.getAllByTestId('toggle-register').at(-1))
+    await userEvent.click(screen.getAllByRole('button', { name: /register/i }).at(-1))
+    await userEvent.click(screen.getAllByRole('button', { name: /^login$/i }).at(-1))
+    await userEvent.click(screen.getAllByRole('button', { name: /register/i }).at(-1))
 
     await userEvent.type(ui.email, 'pro.user@example.com')
     await userEvent.type(ui.password, 'Sup3r$trong_P@ssw0rd2025')
@@ -60,7 +60,7 @@ describe('Login/Register flows (register first, then login)', () => {
     expect(screen.getByText(/register successful/i)).toBeInTheDocument()
 
     // Login
-    await userEvent.click(screen.getByRole('button', { name: /^login$/i }))
+    await userEvent.click(screen.getAllByRole('button', { name: /^login$/i }).at(-1))
     await userEvent.clear(ui.email)
     await userEvent.clear(ui.password)
     await userEvent.type(ui.email, 'pro.user@example.com')
