@@ -48,9 +48,9 @@ describe('Login/Register flows (register first, then login)', () => {
     const ui = setup()
 
     // Toggle a couple times
-    await userEvent.click(screen.getByRole('button', { name: /register/i }))
-    await userEvent.click(screen.getByRole('button', { name: /^login$/i }))
-    await userEvent.click(screen.getByRole('button', { name: /register/i }))
+    await userEvent.click(screen.getAllByTestId('toggle-register').at(-1))
+    await userEvent.click(screen.getAllByTestId('toggle-login').at(-1))
+    await userEvent.click(screen.getAllByTestId('toggle-register').at(-1))
 
     await userEvent.type(ui.email, 'pro.user@example.com')
     await userEvent.type(ui.password, 'Sup3r$trong_P@ssw0rd2025')

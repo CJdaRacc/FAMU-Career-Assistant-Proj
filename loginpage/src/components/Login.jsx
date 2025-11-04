@@ -150,6 +150,7 @@ export default function Login({ onAuth }) {
                           type="button"
                           onClick={() => setMode("register")}
                           className="btn btn-link p-0 align-baseline"
+                          data-testid="toggle-register"
                         >
                           <i className="fa-regular fa-id-card me-1"></i>
                           Register
@@ -162,6 +163,7 @@ export default function Login({ onAuth }) {
                           type="button"
                           onClick={() => setMode("login")}
                           className="btn btn-link p-0 align-baseline"
+                          data-testid="toggle-login"
                         >
                           <i className="fa-solid fa-right-to-bracket me-1"></i>
                           Login
