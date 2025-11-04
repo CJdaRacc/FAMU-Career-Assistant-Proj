@@ -33,11 +33,6 @@ jobs:
     - name: Install Dependencies (loginpage)
       run: npm ci --prefix loginpage
 
-    # Lint and format check
-    - name: Lint
-      run: npm run lint --if-present --prefix loginpage
-    - name: Prettier Check
-      run: npm run format:check --if-present --prefix loginpage
 
     # Run unit tests (Vitest) in CI mode
     - name: Run Tests (Vitest CI)

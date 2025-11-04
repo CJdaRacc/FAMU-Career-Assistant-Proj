@@ -9,41 +9,43 @@
 #################################################################################
 version: "1.0"
 
-#Specify inspection profile for code analysis
+# Select an inspection profile for code analysis
 profile:
-  name: qodana.starter
+  name: qodana.recommended
 
-#Enable inspections
+# Enable/disable specific inspections (optional)
 #include:
-#  - name: <SomeEnabledInspectionId>
+#  - name: <InspectionIdToEnable>
 
-#Disable inspections
 #exclude:
-#  - name: <SomeDisabledInspectionId>
+#  - name: <InspectionIdToDisable>
 #    paths:
 #      - <path/where/not/run/inspection>
 
-projectJDK: "24" #(Applied in CI/CD pipeline)
+# Exclude directories/files from scanning to speed up analysis
+excludePaths:
+  - .git
+  - node_modules
+  - loginpage/node_modules
+  - loginpage/dist
+  - loginpage/.vite
+  - loginpage/coverage
+  - coverage
 
-#Execute shell command before Qodana execution (Applied in CI/CD pipeline)
-#bootstrap: sh ./prepare-qodana.sh
+# Execute shell commands before Qodana execution (applied in CI/CD pipeline)
+# Install dependencies so Qodana JS has project context (types, eslint plugins, etc.)
+bootstrap: |
+  npm ci --prefix loginpage
 
-#Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
+# Install IDE plugins before Qodana execution (optional)
 #plugins:
-#  - id: <plugin.id> #(plugin id can be found at https://plugins.jetbrains.com)
+#  - id: <plugin.id> # plugin id can be found at https://plugins.jetbrains.com
 
-# Quality gate. Will fail the CI/CD pipeline if any condition is not met
-# severityThresholds - configures maximum thresholds for different problem severities
-# testCoverageThresholds - configures minimum code coverage on a whole project and newly added code
-# Code Coverage is available in Ultimate and Ultimate Plus plans
-#failureConditions:
-#  severityThresholds:
-#    any: 15
-#    critical: 5
-#  testCoverageThresholds:
-#    fresh: 70
-#    total: 50
-  
-#Qodana supports other languages, for example, Python, JavaScript, TypeScript, Go, C#, PHP
-#For all supported languages see https://www.jetbrains.com/help/qodana/linters.html
-linter: jetbrains/qodana-jvm-community:2025.2
+# Quality gate. Keep conservative for the first runs to gather a baseline.
+failureConditions:
+  severityThresholds:
+    critical: 1 # fail if any critical problems are found
+
+# Qodana supports many languages. For JS/TS projects use the JS linter image.
+# For all supported linters see https://www.jetbrains.com/help/qodana/linters.html
+linter: jetbrains/qodana-js:2025.2
