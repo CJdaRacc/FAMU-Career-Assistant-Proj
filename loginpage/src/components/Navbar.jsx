@@ -40,10 +40,7 @@ export default function Navbar({ user, onLogout }) {
               </button>
             </li>
             <li className="nav-item">
-              <button
-                className="nav-link btn btn-link text-white-50"
-                onClick={() => go("#/quiz")}
-              >
+              <button className="nav-link btn btn-link text-white-50" onClick={() => go("#/quiz")}>
                 Profile
               </button>
             </li>
@@ -56,18 +53,12 @@ export default function Navbar({ user, onLogout }) {
               </button>
             </li>
             <li className="nav-item">
-              <button
-                className="nav-link btn btn-link text-white-50"
-                onClick={() => go("#/myqa")}
-              >
+              <button className="nav-link btn btn-link text-white-50" onClick={() => go("#/myqa")}>
                 My Q&A
               </button>
             </li>
             <li className="nav-item">
-              <button
-                className="nav-link btn btn-link text-white-50"
-                onClick={() => go("#/jobs")}
-              >
+              <button className="nav-link btn btn-link text-white-50" onClick={() => go("#/jobs")}>
                 Job Matches
               </button>
             </li>
@@ -90,14 +81,9 @@ export default function Navbar({ user, onLogout }) {
           </ul>
           <div className="d-flex align-items-center gap-2">
             {user?.email && (
-              <span className="text-white fw-semibold small d-none d-md-inline">
-                {user.email}
-              </span>
+              <span className="text-white fw-semibold small d-none d-md-inline">{user.email}</span>
             )}
-            <button
-              className="btn btn-light btn-sm"
-              onClick={handleBackToLogin}
-            >
+            <button className="btn btn-light btn-sm" onClick={handleBackToLogin}>
               <i className="fa-solid fa-arrow-right-from-bracket me-1"></i>
               Back to Login
             </button>

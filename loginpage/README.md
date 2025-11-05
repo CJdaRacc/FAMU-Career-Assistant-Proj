@@ -1,6 +1,7 @@
 # FAMU Career Assistant — Login and Career Tools (React + Express + MongoDB)
 
 A minimal MERN application that provides:
+
 - Login and Registration
 - Post‑login onboarding quiz that routes users to either `#/quiz` or `#/dashboard`
 - Resume Feedback: keyword extraction and simple job‑match heuristics
@@ -15,12 +16,15 @@ This project is structured as a single app inside `loginpage/` that contains bot
 
 ## Setup
 
-1) Install dependencies
+1. Install dependencies
+
 - Open a terminal at the repository root and run:
   - npm install
 
-2) Configure environment (optional but recommended)
+2. Configure environment (optional but recommended)
+
 - Create a `.env` file in the `loginpage/` directory. Example:
+
 ```
 MONGODB_URI=mongodb://127.0.0.1:27017/loginpage
 PORT=5000
@@ -35,14 +39,17 @@ GEMINI_API_KEY=your_google_generative_ai_key
 # or
 # GOOGLE_API_KEY=your_google_generative_ai_key
 ```
+
 - If `MONGODB_URI` is omitted, the server defaults to `mongodb://127.0.0.1:27017/loginpage`.
 
-3) Run the app (backend + frontend together)
+3. Run the app (backend + frontend together)
+
 - npm run dev
 - Backend API: http://127.0.0.1:5000
 - Frontend (Vite): http://localhost:5173 (port may vary)
 
-4) Run pieces separately (optional)
+4. Run pieces separately (optional)
+
 - Backend only: npm run server
 - Frontend only: vite (or `npm run preview` to serve a built app)
 
@@ -64,6 +71,7 @@ The Vite dev server proxies `/api` requests to the backend, so the React app cal
 - Other pages: `#/jobs`, `#/save`, `#/job-matcher`, `#/advanced`, `#/myqa`
 
 Navigation behavior after auth:
+
 - On successful login/register, the app sets `window.location.hash` to `#/quiz` if the user has not completed the questionnaire, otherwise to `#/dashboard`.
 
 ## API Endpoints (selected)
@@ -117,7 +125,6 @@ Navigation behavior after auth:
   - `npm run test` — interactive watch mode
   - `npm run test:ci` — one‑shot CI mode
 - CI is already configured to pick up tests if these scripts exist.
-
 
 ## License
 

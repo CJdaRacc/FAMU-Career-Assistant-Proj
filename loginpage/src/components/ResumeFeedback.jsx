@@ -19,11 +19,14 @@ function computeManualChecks(text) {
   const linkedinRe = /linkedin\.com\/in\//i;
   const githubRe = /github\.com\//i;
 
-  const experienceHeaderRe = /(\bwork\s+experience\b|\bexperience\b|\bemployment\s+history\b|\bprofessional\s+experience\b)/i;
+  const experienceHeaderRe =
+    /(\bwork\s+experience\b|\bexperience\b|\bemployment\s+history\b|\bprofessional\s+experience\b)/i;
   const yearRe = /\b(19|20)\d{2}\b/;
-  const monthYearRe = /(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+(19|20)\d{2}/i;
+  const monthYearRe =
+    /(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+(19|20)\d{2}/i;
 
-  const educationRe = /(\beducation\b|\bbachelor'?s\b|\bmaster'?s\b|\bb\.\s?s\.?\b|\bm\.\s?s\.?\b|\buniversity\b|\bcollege\b|\bgpa\b)/i;
+  const educationRe =
+    /(\beducation\b|\bbachelor'?s\b|\bmaster'?s\b|\bb\.\s?s\.?\b|\bm\.\s?s\.?\b|\buniversity\b|\bcollege\b|\bgpa\b)/i;
 
   const skillsHeaderRe = /(\bskills\b|\btechnical\s+skills\b|\btechnologies\b|\btooling\b)/i;
 
@@ -68,8 +71,8 @@ function computeManualChecks(text) {
       details: experienceOk
         ? "Found work experience section with dates."
         : hasExpHeader
-        ? "Experience section detected but dates may be missing. Include month/year ranges (e.g., Jun 2023 – Present)."
-        : "No experience section detected. Add a 'Work Experience' section with role, company, location, and dated bullet points.",
+          ? "Experience section detected but dates may be missing. Include month/year ranges (e.g., Jun 2023 – Present)."
+          : "No experience section detected. Add a 'Work Experience' section with role, company, location, and dated bullet points.",
       suggestions: [
         "Use accomplishment bullets starting with strong verbs",
         "Quantify impact (numbers, %, $, time saved)",
@@ -125,7 +128,55 @@ function regexEscape(s) {
 
 // Common English stopwords we do not want to highlight
 const STOPWORDS = new Set([
-  "the","and","or","a","an","to","of","in","on","for","with","by","at","from","is","are","was","were","be","been","being","this","that","these","those","as","it","its","but","if","not","no","yes","you","your","we","our","they","their","he","she","him","her","them","i","me","my","mine","ours"
+  "the",
+  "and",
+  "or",
+  "a",
+  "an",
+  "to",
+  "of",
+  "in",
+  "on",
+  "for",
+  "with",
+  "by",
+  "at",
+  "from",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "this",
+  "that",
+  "these",
+  "those",
+  "as",
+  "it",
+  "its",
+  "but",
+  "if",
+  "not",
+  "no",
+  "yes",
+  "you",
+  "your",
+  "we",
+  "our",
+  "they",
+  "their",
+  "he",
+  "she",
+  "him",
+  "her",
+  "them",
+  "i",
+  "me",
+  "my",
+  "mine",
+  "ours",
 ]);
 
 // Highlight keywords inside a block of text using <mark>
@@ -154,7 +205,9 @@ function highlightKeywordsIn(text, keywords) {
 function buildHighlightedResume(text, keywords) {
   const t = String(text || "");
   const lc = t.toLowerCase();
-  const expMatch = lc.match(/(work\s+experience|experience|employment\s+history|professional\s+experience)/i);
+  const expMatch = lc.match(
+    /(work\s+experience|experience|employment\s+history|professional\s+experience)/i,
+  );
   const skillsMatch = lc.match(/(technical\s+skills|skills|technologies|tooling)/i);
   const indices = [];
   if (expMatch) indices.push({ name: "Experience", start: expMatch.index });
@@ -261,7 +314,8 @@ export default function ResumeFeedback({ user }) {
             <div className="card-body">
               <h3 className="card-title mb-2">Resume Feedback</h3>
               <p className="text-muted mb-3">
-                Upload a PDF or DOCX, or paste your resume text. We will automatically detect technical skills in your resume and score matches against your saved jobs.
+                Upload a PDF or DOCX, or paste your resume text. We will automatically detect
+                technical skills in your resume and score matches against your saved jobs.
               </p>
 
               <div className="mb-3">
@@ -274,12 +328,14 @@ export default function ResumeFeedback({ user }) {
                   disabled={extracting || analyzing}
                 />
                 <div className="d-flex gap-2 mt-2">
-                  <button className="btn btn-outline-primary btn-sm" onClick={extractFromFile} disabled={!file || extracting}>
+                  <button
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={extractFromFile}
+                    disabled={!file || extracting}
+                  >
                     {extracting ? "Extracting..." : "Extract Text"}
                   </button>
-                  {file && (
-                    <span className="small text-muted">Selected: {file.name}</span>
-                  )}
+                  {file && <span className="small text-muted">Selected: {file.name}</span>}
                 </div>
               </div>
 
@@ -299,23 +355,36 @@ export default function ResumeFeedback({ user }) {
               {resumeText ? (
                 <details className="mb-3">
                   <summary className="d-flex justify-content-between align-items-center">
-                    <span><strong>Manual Checks</strong></span>
-                    <span className={"badge " + (manual.summaryOk ? "text-bg-success" : "text-bg-warning")}>
+                    <span>
+                      <strong>Manual Checks</strong>
+                    </span>
+                    <span
+                      className={
+                        "badge " + (manual.summaryOk ? "text-bg-success" : "text-bg-warning")
+                      }
+                    >
                       {manual.summaryOk ? "All good" : "Needs review"}
                     </span>
                   </summary>
-                  <div className={"alert mt-2 " + (manual.summaryOk ? "alert-success" : "alert-warning")}>
+                  <div
+                    className={
+                      "alert mt-2 " + (manual.summaryOk ? "alert-success" : "alert-warning")
+                    }
+                  >
                     {manual.summaryOk
                       ? "All core sections detected. You can proceed to Analyze to see keyword matches against your saved jobs."
-                      : "Some core sections appear to be missing or incomplete. Review the items below."
-                    }
+                      : "Some core sections appear to be missing or incomplete. Review the items below."}
                   </div>
                   <div className="list-group">
                     {manual.checks.map((c) => (
                       <div key={c.key} className="list-group-item">
                         <div className="d-flex justify-content-between align-items-center">
                           <strong>{c.title}</strong>
-                          <span className={"badge " + (c.ok ? "text-bg-success" : "text-bg-danger")}>{c.ok ? "OK" : "Needs attention"}</span>
+                          <span
+                            className={"badge " + (c.ok ? "text-bg-success" : "text-bg-danger")}
+                          >
+                            {c.ok ? "OK" : "Needs attention"}
+                          </span>
                         </div>
                         <div className="small mt-1">{c.details}</div>
                         {!c.ok && (
@@ -336,7 +405,10 @@ export default function ResumeFeedback({ user }) {
                 {savedJobs.length ? (
                   <ul className="list-group">
                     {savedJobs.map((j) => (
-                      <li key={j.id} className="list-group-item d-flex justify-content-between align-items-center">
+                      <li
+                        key={j.id}
+                        className="list-group-item d-flex justify-content-between align-items-center"
+                      >
                         <span>
                           <strong>{j.title}</strong>
                           {j.company ? <span className="text-muted"> @ {j.company}</span> : null}
@@ -346,7 +418,8 @@ export default function ResumeFeedback({ user }) {
                   </ul>
                 ) : (
                   <div className="alert alert-warning">
-                    No saved jobs found. You can still analyze your resume without comparing to jobs by selecting the option below.
+                    No saved jobs found. You can still analyze your resume without comparing to jobs
+                    by selecting the option below.
                   </div>
                 )}
                 <div className="form-check mt-2">
@@ -366,28 +439,40 @@ export default function ResumeFeedback({ user }) {
 
               <div className="d-flex gap-2">
                 <button className="btn btn-primary" onClick={analyze} disabled={disabledAnalyze}>
-                  {analyzing ? "Analyzing..." : `Analyze Resume${compareToJobs ? " vs Jobs" : " (Keywords Only)"}`}
+                  {analyzing
+                    ? "Analyzing..."
+                    : `Analyze Resume${compareToJobs ? " vs Jobs" : " (Keywords Only)"}`}
                 </button>
               </div>
 
-              {error && (
-                <div className="alert alert-danger mt-3">{error}</div>
-              )}
+              {error && <div className="alert alert-danger mt-3">{error}</div>}
 
               {result && (
                 <div className="mt-4">
                   <h5>Keywords (technical skills prioritized)</h5>
                   <div className="mb-3">
                     {(result.keywords || []).map((k) => (
-                      <span key={k} className="badge rounded-pill text-bg-secondary me-1 mb-1">{k}</span>
+                      <span key={k} className="badge rounded-pill text-bg-secondary me-1 mb-1">
+                        {k}
+                      </span>
                     ))}
                   </div>
 
                   {resumeText ? (
                     <details className="mb-3">
-                      <summary><strong>Resume preview with highlighted keywords</strong></summary>
-                      <div className="mt-2 small text-muted">We highlight your detected keywords inside your resume text (Experience and Skills sections are prioritized when detected).</div>
-                      <div className="border rounded p-2 mt-2" dangerouslySetInnerHTML={{ __html: buildHighlightedResume(resumeText, result.keywords || []) }} />
+                      <summary>
+                        <strong>Resume preview with highlighted keywords</strong>
+                      </summary>
+                      <div className="mt-2 small text-muted">
+                        We highlight your detected keywords inside your resume text (Experience and
+                        Skills sections are prioritized when detected).
+                      </div>
+                      <div
+                        className="border rounded p-2 mt-2"
+                        dangerouslySetInnerHTML={{
+                          __html: buildHighlightedResume(resumeText, result.keywords || []),
+                        }}
+                      />
                     </details>
                   ) : null}
 
@@ -400,10 +485,14 @@ export default function ResumeFeedback({ user }) {
                             <div className="d-flex justify-content-between">
                               <div>
                                 <strong>{r.title}</strong>
-                                {r.company ? <span className="text-muted"> @ {r.company}</span> : null}
+                                {r.company ? (
+                                  <span className="text-muted"> @ {r.company}</span>
+                                ) : null}
                               </div>
                               <div>
-                                <span className={`badge ${r.score >= 70 ? "text-bg-success" : r.score >= 40 ? "text-bg-warning" : "text-bg-danger"}`}>
+                                <span
+                                  className={`badge ${r.score >= 70 ? "text-bg-success" : r.score >= 40 ? "text-bg-warning" : "text-bg-danger"}`}
+                                >
                                   {r.score}% match
                                 </span>
                               </div>
@@ -413,7 +502,9 @@ export default function ResumeFeedback({ user }) {
                                 <div className="small text-muted">Matched keywords:</div>
                                 <div>
                                   {r.matchedKeywords.map((k, i) => (
-                                    <span key={i} className="badge text-bg-light border me-1 mb-1">{k}</span>
+                                    <span key={i} className="badge text-bg-light border me-1 mb-1">
+                                      {k}
+                                    </span>
                                   ))}
                                 </div>
                               </div>
@@ -423,7 +514,9 @@ export default function ResumeFeedback({ user }) {
                                 <div className="small text-muted">Unmatched keywords:</div>
                                 <div>
                                   {r.missingKeywords.slice(0, 4).map((k, i) => (
-                                    <span key={i} className="badge text-bg-danger me-1 mb-1">{k}</span>
+                                    <span key={i} className="badge text-bg-danger me-1 mb-1">
+                                      {k}
+                                    </span>
                                   ))}
                                 </div>
                               </div>
@@ -435,8 +528,7 @@ export default function ResumeFeedback({ user }) {
                         ))}
                       </div>
                     </>
-                  ) : null
-                  }
+                  ) : null}
                 </div>
               )}
             </div>

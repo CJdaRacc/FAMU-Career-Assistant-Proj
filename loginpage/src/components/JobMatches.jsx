@@ -19,12 +19,9 @@ export default function JobMatches({ user }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/jobs/my?userId=${encodeURIComponent(user.userId)}`,
-      );
+      const res = await fetch(`/api/jobs/my?userId=${encodeURIComponent(user.userId)}`);
       const data = await res.json();
-      if (!res.ok)
-        throw new Error(data?.message || "Failed to load job matches");
+      if (!res.ok) throw new Error(data?.message || "Failed to load job matches");
       setMatches(Array.isArray(data.matches) ? data.matches : []);
       setCreatedAt(data.createdAt || null);
       setProfile(data.profileSnapshot || null);
@@ -42,13 +39,7 @@ export default function JobMatches({ user }) {
 
   // Auto-generate dynamically on first visit if no matches exist but we have a profile snapshot
   useEffect(() => {
-    if (
-      !loading &&
-      hasUser &&
-      !autoTriggered &&
-      profile &&
-      (!matches || matches.length === 0)
-    ) {
+    if (!loading && hasUser && !autoTriggered && profile && (!matches || matches.length === 0)) {
       setAutoTriggered(true);
       handleGenerate();
     }
@@ -69,16 +60,14 @@ export default function JobMatches({ user }) {
         body: JSON.stringify({ userId: user.userId }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok)
-        throw new Error(data?.message || "Failed to generate job matches");
+      if (!res.ok) throw new Error(data?.message || "Failed to generate job matches");
       setMatches(Array.isArray(data.matches) ? data.matches : []);
       setCreatedAt(data.createdAt || new Date().toISOString());
       setProfile(data.profileSnapshot || null);
     } catch (err) {
       // If the server indicates Gemini is not configured, surface a clearer message
       const msg =
-        err?.message &&
-        /GEMINI_API_KEY|GOOGLE_API_KEY|Server not configured/i.test(err.message)
+        err?.message && /GEMINI_API_KEY|GOOGLE_API_KEY|Server not configured/i.test(err.message)
           ? "Server is not configured with a Gemini API key. Please set GEMINI_API_KEY and try again."
           : err.message || "Something went wrong";
       setError(msg);
@@ -95,10 +84,7 @@ export default function JobMatches({ user }) {
             <div className="card-body p-4">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h2
-                    className="mb-1"
-                    style={{ fontFamily: '"Limelight", serif' }}
-                  >
+                  <h2 className="mb-1" style={{ fontFamily: '"Limelight", serif' }}>
                     Job Matches
                   </h2>
                   <p className="text-muted mb-0">
@@ -110,16 +96,10 @@ export default function JobMatches({ user }) {
                   onClick={handleGenerate}
                   disabled={loading || !hasUser}
                 >
-                  {loading
-                    ? "Working…"
-                    : matches.length
-                      ? "Regenerate"
-                      : "Generate Matches"}
+                  {loading ? "Working…" : matches.length ? "Regenerate" : "Generate Matches"}
                 </button>
               </div>
-              {error && (
-                <div className="alert alert-danger mt-3 mb-0 py-2">{error}</div>
-              )}
+              {error && <div className="alert alert-danger mt-3 mb-0 py-2">{error}</div>}
             </div>
           </div>
 
@@ -145,9 +125,7 @@ export default function JobMatches({ user }) {
                     <div className="border rounded p-2 h-100">
                       <strong>Interests</strong>
                       <div>
-                        {(profile.interests || []).length
-                          ? profile.interests.join(", ")
-                          : "—"}
+                        {(profile.interests || []).length ? profile.interests.join(", ") : "—"}
                       </div>
                     </div>
                   </div>
@@ -199,10 +177,7 @@ export default function JobMatches({ user }) {
                         </div>
                       </div>
                       {m.reason && (
-                        <div
-                          className="text-muted mt-2"
-                          style={{ whiteSpace: "pre-wrap" }}
-                        >
+                        <div className="text-muted mt-2" style={{ whiteSpace: "pre-wrap" }}>
                           {m.reason}
                         </div>
                       )}

@@ -16,12 +16,9 @@ export default function AdvancedReview({ user }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(
-          `/api/advanced/my?userId=${encodeURIComponent(user.userId)}`,
-        );
+        const res = await fetch(`/api/advanced/my?userId=${encodeURIComponent(user.userId)}`);
         const json = await res.json().catch(() => ({}));
-        if (!res.ok)
-          throw new Error(json?.message || "Failed to load your questionnaire");
+        if (!res.ok) throw new Error(json?.message || "Failed to load your questionnaire");
         if (!active) return;
         setData(json.advanced || null);
       } catch (err) {
@@ -48,17 +45,14 @@ export default function AdvancedReview({ user }) {
               <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
                 My Personalized Q&A
               </h2>
-              <p className="text-muted">
-                Only you can view your saved questions and answers.
-              </p>
+              <p className="text-muted">Only you can view your saved questions and answers.</p>
 
               {loading && <div className="alert alert-info py-2">Loading…</div>}
               {error && <div className="alert alert-danger py-2">{error}</div>}
 
               {!loading && !error && !data && (
                 <div className="alert alert-warning py-2">
-                  No personalized questionnaire found. Complete the Advanced
-                  Questionnaire first.
+                  No personalized questionnaire found. Complete the Advanced Questionnaire first.
                 </div>
               )}
 
@@ -77,61 +71,47 @@ export default function AdvancedReview({ user }) {
                           <strong>Class Year:</strong> {profile.classYear}
                         </li>
                       )}
-                      {Array.isArray(profile.interests) &&
-                        profile.interests.length > 0 && (
-                          <li>
-                            <strong>Interests:</strong>{" "}
-                            {profile.interests.join(", ")}
-                          </li>
-                        )}
+                      {Array.isArray(profile.interests) && profile.interests.length > 0 && (
+                        <li>
+                          <strong>Interests:</strong> {profile.interests.join(", ")}
+                        </li>
+                      )}
                     </ul>
                   </div>
 
                   <div className="mb-4">
                     <h5 className="mb-2">Generic Questions & Answers</h5>
-                    {Array.isArray(data.genericQuestions) &&
-                    data.genericQuestions.length > 0 ? (
+                    {Array.isArray(data.genericQuestions) && data.genericQuestions.length > 0 ? (
                       <ol className="mb-0">
                         {data.genericQuestions.map((q, i) => (
                           <li key={`g-${i}`} className="mb-2">
                             <div className="fw-semibold">{q}</div>
                             <div className="text-muted">
-                              Answer:{" "}
-                              {String(data.genericAnswers?.[i] || "") || (
-                                <em>(none)</em>
-                              )}
+                              Answer: {String(data.genericAnswers?.[i] || "") || <em>(none)</em>}
                             </div>
                           </li>
                         ))}
                       </ol>
                     ) : (
-                      <div className="text-muted">
-                        No generic responses found.
-                      </div>
+                      <div className="text-muted">No generic responses found.</div>
                     )}
                   </div>
 
                   <div>
                     <h5 className="mb-2">Personalized Questions & Answers</h5>
-                    {Array.isArray(data.aiQuestions) &&
-                    data.aiQuestions.length > 0 ? (
+                    {Array.isArray(data.aiQuestions) && data.aiQuestions.length > 0 ? (
                       <ol className="mb-0">
                         {data.aiQuestions.map((q, i) => (
                           <li key={`a-${i}`} className="mb-2">
                             <div className="fw-semibold">{q}</div>
                             <div className="text-muted">
-                              Answer:{" "}
-                              {String(data.aiAnswers?.[i] || "") || (
-                                <em>(none)</em>
-                              )}
+                              Answer: {String(data.aiAnswers?.[i] || "") || <em>(none)</em>}
                             </div>
                           </li>
                         ))}
                       </ol>
                     ) : (
-                      <div className="text-muted">
-                        No personalized responses found.
-                      </div>
+                      <div className="text-muted">No personalized responses found.</div>
                     )}
                   </div>
                 </div>

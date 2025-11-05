@@ -3,8 +3,8 @@
 
 export class HttpError extends Error {
   constructor(message, status, code, body) {
-    super(message || 'Request failed');
-    this.name = 'HttpError';
+    super(message || "Request failed");
+    this.name = "HttpError";
     this.status = status || 0;
     this.code = code;
     this.body = body;
@@ -13,8 +13,8 @@ export class HttpError extends Error {
 
 export class NetworkError extends Error {
   constructor(message, cause) {
-    super(message || 'Network error');
-    this.name = 'NetworkError';
+    super(message || "Network error");
+    this.name = "NetworkError";
     this.cause = cause;
   }
 }
@@ -24,7 +24,7 @@ export async function fetchJson(url, options) {
   try {
     res = await fetch(url, options);
   } catch (e) {
-    throw new NetworkError('Network error', e);
+    throw new NetworkError("Network error", e);
   }
 
   // Try to parse JSON but tolerate empty bodies

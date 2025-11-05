@@ -33,13 +33,7 @@ const FIELD_INTERESTS = {
     "Medical Devices",
     "Other",
   ],
-  "Natural Sciences": [
-    "Environmental Science",
-    "Chemistry",
-    "Physics",
-    "Biology",
-    "Other",
-  ],
+  "Natural Sciences": ["Environmental Science", "Chemistry", "Physics", "Biology", "Other"],
 };
 
 export default function Quiz({ user, onDone }) {
@@ -81,9 +75,7 @@ export default function Quiz({ user, onDone }) {
   };
 
   const handleFieldInterestChange = (field, e) => {
-    const values = Array.from(e.target.selectedOptions || []).map(
-      (o) => o.value,
-    );
+    const values = Array.from(e.target.selectedOptions || []).map((o) => o.value);
     setFieldSelections((prev) => ({ ...prev, [field]: values }));
   };
 
@@ -150,9 +142,7 @@ export default function Quiz({ user, onDone }) {
               <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
                 Student Profile Setup
               </h2>
-              <p className="text-muted">
-                Tell us your major, related interests, and class year.
-              </p>
+              <p className="text-muted">Tell us your major, related interests, and class year.</p>
               {error && (
                 <div className="alert alert-danger py-2" role="alert">
                   {error}
@@ -161,9 +151,7 @@ export default function Quiz({ user, onDone }) {
               <form onSubmit={handleSubmit}>
                 {/* General fields as checkboxes */}
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Major
-                  </label>
+                  <label className="form-label fw-semibold">Major</label>
                   <div className="row">
                     {fieldNames.map((field) => (
                       <div className="col-12 col-md-6" key={field}>
@@ -175,10 +163,7 @@ export default function Quiz({ user, onDone }) {
                             checked={selectedFields.includes(field)}
                             onChange={() => toggleField(field)}
                           />
-                          <label
-                            className="form-check-label"
-                            htmlFor={`field-${field}`}
-                          >
+                          <label className="form-check-label" htmlFor={`field-${field}`}>
                             {field}
                           </label>
                         </div>
@@ -186,18 +171,15 @@ export default function Quiz({ user, onDone }) {
                     ))}
                   </div>
                   <div className="form-text">
-                    Select one or more fields. Interest options will appear
-                    below for each selected field.
+                    Select one or more fields. Interest options will appear below for each selected
+                    field.
                   </div>
                 </div>
 
                 {/* Per-field interests dropdowns */}
                 {selectedFields.map((field) => (
                   <div className="mb-3" key={`sel-${field}`}>
-                    <label
-                      className="form-label fw-semibold"
-                      htmlFor={`interests-${field}`}
-                    >
+                    <label className="form-label fw-semibold" htmlFor={`interests-${field}`}>
                       {field} Interests
                     </label>
                     <select
@@ -215,8 +197,8 @@ export default function Quiz({ user, onDone }) {
                       ))}
                     </select>
                     <div className="form-text">
-                      Hold Ctrl (Windows) or Command (Mac) to select multiple.
-                      Choose "Other" to add custom interests.
+                      Hold Ctrl (Windows) or Command (Mac) to select multiple. Choose "Other" to add
+                      custom interests.
                     </div>
                   </div>
                 ))}
@@ -259,11 +241,7 @@ export default function Quiz({ user, onDone }) {
                   </select>
                 </div>
 
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={submitting}
-                >
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? "Saving…" : "Save and Continue"}
                 </button>
               </form>

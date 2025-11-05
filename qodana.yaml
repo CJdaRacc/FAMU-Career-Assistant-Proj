@@ -17,10 +17,9 @@ profile:
 #include:
 #  - name: <InspectionIdToEnable>
 
-#exclude:
-#  - name: <InspectionIdToDisable>
-#    paths:
-#      - <path/where/not/run/inspection>
+exclude:
+  # The project does not follow StandardJS formatting; rely on Prettier instead
+  - name: TYPESCRIPT_STANDARD
 
 # Exclude directories/files from scanning to speed up analysis
 excludePaths:

@@ -378,15 +378,14 @@ export default function JobPostings({ user }) {
         {/* Listings */}
         <section style={styles.listings}>
           {loading && <div className="text-muted">Loading…</div>}
-          {error && (
-            <div className="alert alert-warning py-2">Failed to load: {error}</div>
-          )}
+          {error && <div className="alert alert-warning py-2">Failed to load: {error}</div>}
 
           {!loading && !error && filteredSorted.length === 0 && (
             <div className="text-muted">No postings available.</div>
           )}
 
-          {!loading && !error &&
+          {!loading &&
+            !error &&
             filteredSorted.map((job) => {
               const applied = !!job.appliedAt;
               const opened = openMore.has(job.id);
@@ -447,10 +446,12 @@ export default function JobPostings({ user }) {
                         <strong>Match:</strong> {job.matchPercent ?? 0}%
                       </p>
                       <p>
-                        <strong>Applied:</strong> {applied ? new Date(job.appliedAt).toLocaleString() : "Not yet"}
+                        <strong>Applied:</strong>{" "}
+                        {applied ? new Date(job.appliedAt).toLocaleString() : "Not yet"}
                       </p>
                       <p className="mb-0 text-muted">
-                        This is a simplified preview. More fields (location, work type, responsibilities, requirements) will appear as the backend evolves.
+                        This is a simplified preview. More fields (location, work type,
+                        responsibilities, requirements) will appear as the backend evolves.
                       </p>
                     </div>
                   )}

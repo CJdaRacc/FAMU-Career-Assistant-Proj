@@ -13,8 +13,7 @@ export default function JobMatcher({ onMatch }) {
   const [matched, setMatched] = useState(false);
   const [jobs, setJobs] = useState([]);
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,10 +25,8 @@ export default function JobMatcher({ onMatch }) {
 
     // fake filtering by user choices
     const filtered = data.items.filter((j) => {
-      if (form.type && !j.title.toLowerCase().includes(form.type.toLowerCase()))
-        return false;
-      if (form.remote === "yes" && !j.title.toLowerCase().includes("remote"))
-        return false;
+      if (form.type && !j.title.toLowerCase().includes(form.type.toLowerCase())) return false;
+      if (form.remote === "yes" && !j.title.toLowerCase().includes("remote")) return false;
       return true;
     });
 
@@ -60,12 +57,9 @@ export default function JobMatcher({ onMatch }) {
     <div style={containerStyle}>
       {!matched ? (
         <>
-          <h2 style={{ color: "#2e7d32", textAlign: "center" }}>
-            Job Matcher Assistant 🤖
-          </h2>
+          <h2 style={{ color: "#2e7d32", textAlign: "center" }}>Job Matcher Assistant 🤖</h2>
           <p style={{ textAlign: "center", color: "#555" }}>
-            Answer a few questions and let our robot match you with the best
-            jobs!
+            Answer a few questions and let our robot match you with the best jobs!
           </p>
 
           <form
@@ -151,11 +145,7 @@ export default function JobMatcher({ onMatch }) {
             </button>
           </form>
 
-          <img
-            src="/robot-thinking.png"
-            alt="Thinking Robot"
-            style={robotStyle}
-          />
+          <img src="/robot-thinking.png" alt="Thinking Robot" style={robotStyle} />
         </>
       ) : (
         <div style={{ textAlign: "center" }}>

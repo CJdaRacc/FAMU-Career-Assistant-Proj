@@ -35,12 +35,7 @@ const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
 // Local file logging setup
-const DEFAULT_LOG_FILE = path.resolve(
-  process.cwd(),
-  "server",
-  "data",
-  "events.log",
-);
+const DEFAULT_LOG_FILE = path.resolve(process.cwd(), "server", "data", "events.log");
 const LOG_FILE = process.env.LOG_FILE || DEFAULT_LOG_FILE;
 const LOG_DIR = path.dirname(LOG_FILE);
 try {
@@ -61,13 +56,20 @@ function appendEvent(event) {
 }
 
 // Process-level safety nets
-process.on('unhandledRejection', (reason) => {
-  try { appendEvent({ type: 'unhandled_rejection', error: String((reason && reason.message) || reason) }); } catch {}
-  console.error('Unhandled Rejection:', reason);
+process.on("unhandledRejection", (reason) => {
+  try {
+    appendEvent({
+      type: "unhandled_rejection",
+      error: String((reason && reason.message) || reason),
+    });
+  } catch {}
+  console.error("Unhandled Rejection:", reason);
 });
-process.on('uncaughtException', (err) => {
-  try { appendEvent({ type: 'uncaught_exception', error: err?.message }); } catch {}
-  console.error('Uncaught Exception:', err);
+process.on("uncaughtException", (err) => {
+  try {
+    appendEvent({ type: "uncaught_exception", error: err?.message });
+  } catch {}
+  console.error("Uncaught Exception:", err);
 });
 
 // Async route wrapper
@@ -204,9 +206,7 @@ app.post("/api/register", async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
       appendEvent({ type: "register_failed", reason: "missing_fields" });
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
+      return res.status(400).json({ message: "Email and password are required." });
     }
     const existing = await User.findOne({ email });
     if (existing) {
@@ -237,9 +237,7 @@ app.post("/api/login", async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
       appendEvent({ type: "login_failed", reason: "missing_fields" });
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
+      return res.status(400).json({ message: "Email and password are required." });
     }
     const user = await User.findOne({ email });
     if (!user) {
@@ -290,12 +288,9 @@ app.post("/api/questionnaire", async (req, res) => {
         reason: "missing_payload",
         userId,
       });
-      return res
-        .status(400)
-        .json({
-          message:
-            "Provide either answers array (legacy) or major and classYear (new form).",
-        });
+      return res.status(400).json({
+        message: "Provide either answers array (legacy) or major and classYear (new form).",
+      });
     }
 
     const user = await User.findById(userId);
@@ -366,13 +361,9 @@ app.get("/api/results", async (req, res) => {
     const { userId } = req.query || {};
     if (!userId) {
       appendEvent({ type: "results_failed", reason: "missing_user" });
-      return res
-        .status(400)
-        .json({ message: "userId query parameter is required" });
+      return res.status(400).json({ message: "userId query parameter is required" });
     }
-    const results = await Result.find({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const results = await Result.find({ userId }).sort({ createdAt: -1 }).lean();
     appendEvent({ type: "results_fetch", userId, count: results.length });
     return res.json({ userId, results });
   } catch (err) {
@@ -387,20 +378,15 @@ app.post("/api/gemini", async (req, res) => {
     const message = (req.body && req.body.message) || req.query?.message;
     if (!message || typeof message !== "string") {
       appendEvent({ type: "gemini_failed", reason: "missing_message" });
-      return res
-        .status(400)
-        .json({ message: 'Parameter "message" is required.' });
+      return res.status(400).json({ message: 'Parameter "message" is required.' });
     }
 
     const GEMINI_API_KEY = getGeminiApiKey();
     if (!GEMINI_API_KEY) {
       appendEvent({ type: "gemini_failed", reason: "missing_api_key" });
-      return res
-        .status(500)
-        .json({
-          message:
-            "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env",
-        });
+      return res.status(500).json({
+        message: "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env",
+      });
     }
     const url =
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
@@ -430,14 +416,12 @@ app.post("/api/gemini", async (req, res) => {
         statusText: resp.statusText,
         body: data,
       });
-      return res
-        .status(resp.status)
-        .json({
-          message: "Gemini API error",
-          status: resp.status,
-          statusText: resp.statusText,
-          body: data,
-        });
+      return res.status(resp.status).json({
+        message: "Gemini API error",
+        status: resp.status,
+        statusText: resp.statusText,
+        body: data,
+      });
     }
 
     appendEvent({ type: "gemini_request", ok: true });
@@ -453,16 +437,12 @@ app.post("/api/gemini", async (req, res) => {
 
 function safeArrayOfStrings(value) {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((v) => (v == null ? "" : String(v)))
-    .filter((s) => s.length > 0);
+  return value.map((v) => (v == null ? "" : String(v))).filter((s) => s.length > 0);
 }
 
 async function getProfileSnapshot(userId) {
   try {
-    const latest = await Result.findOne({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const latest = await Result.findOne({ userId }).sort({ createdAt: -1 }).lean();
     return {
       major: latest?.major || undefined,
       interests: Array.isArray(latest?.interests) ? latest.interests : [],
@@ -482,8 +462,7 @@ app.get("/api/advanced/init-questions", (req, res) => {
 // Generate 8 personalized questions from Gemini based on user profile, prior answers, and current generic answers
 app.post("/api/advanced/generate", async (req, res) => {
   try {
-    const { userId, genericAnswers, dashboardContext, targetCareer } =
-      req.body || {};
+    const { userId, genericAnswers, dashboardContext, targetCareer } = req.body || {};
     if (!userId) {
       appendEvent({ type: "adv_generate_failed", reason: "missing_user" });
       return res.status(400).json({ message: "userId is required" });
@@ -495,11 +474,9 @@ app.post("/api/advanced/generate", async (req, res) => {
         reason: "bad_generic_answers",
         count: gAnswers.length,
       });
-      return res
-        .status(400)
-        .json({
-          message: `Provide ${ADV_GENERIC_QUESTIONS.length} genericAnswers`,
-        });
+      return res.status(400).json({
+        message: `Provide ${ADV_GENERIC_QUESTIONS.length} genericAnswers`,
+      });
     }
 
     const profile = await getProfileSnapshot(userId);
@@ -507,9 +484,7 @@ app.post("/api/advanced/generate", async (req, res) => {
     // Fetch the most recent advanced QA to include prior personalized answers as context (if any)
     let priorQA = null;
     try {
-      priorQA = await AdvancedQA.findOne({ userId })
-        .sort({ createdAt: -1 })
-        .lean();
+      priorQA = await AdvancedQA.findOne({ userId }).sort({ createdAt: -1 }).lean();
     } catch (_) {}
 
     const contextBits = [
@@ -528,8 +503,7 @@ app.post("/api/advanced/generate", async (req, res) => {
           "PRIOR PERSONALIZED Q&A",
           ...(Array.isArray(priorQA.aiQuestions)
             ? priorQA.aiQuestions.map(
-                (q, i) =>
-                  `${i + 1}. ${q}\nAnswer: ${String(priorQA.aiAnswers?.[i] || "").trim()}`,
+                (q, i) => `${i + 1}. ${q}\nAnswer: ${String(priorQA.aiAnswers?.[i] || "").trim()}`,
               )
             : []),
         ].join("\n")
@@ -538,12 +512,9 @@ app.post("/api/advanced/generate", async (req, res) => {
     const GEMINI_API_KEY = getGeminiApiKey();
     if (!GEMINI_API_KEY) {
       appendEvent({ type: "adv_generate_failed", reason: "missing_api_key" });
-      return res
-        .status(500)
-        .json({
-          message:
-            "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env",
-        });
+      return res.status(500).json({
+        message: "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env",
+      });
     }
 
     const model = "gemini-2.0-flash";
@@ -588,9 +559,7 @@ app.post("/api/advanced/generate", async (req, res) => {
         status: resp.status,
         body: data,
       });
-      return res
-        .status(resp.status)
-        .json({ message: "Gemini API error", body: data });
+      return res.status(resp.status).json({ message: "Gemini API error", body: data });
     }
 
     // Try to extract text
@@ -616,9 +585,7 @@ app.post("/api/advanced/generate", async (req, res) => {
 
     if (questions.length !== 8) {
       appendEvent({ type: "adv_generate_bad_output", got: questions.length });
-      return res
-        .status(502)
-        .json({ message: "AI did not return 8 questions", raw: textOut });
+      return res.status(502).json({ message: "AI did not return 8 questions", raw: textOut });
     }
 
     appendEvent({
@@ -641,14 +608,8 @@ app.post("/api/advanced/generate", async (req, res) => {
 // Submit all advanced questionnaire answers for persistence
 app.post("/api/advanced/submit", async (req, res) => {
   try {
-    const {
-      userId,
-      genericQuestions,
-      genericAnswers,
-      aiQuestions,
-      aiAnswers,
-      profileSnapshot,
-    } = req.body || {};
+    const { userId, genericQuestions, genericAnswers, aiQuestions, aiAnswers, profileSnapshot } =
+      req.body || {};
     if (!userId) {
       appendEvent({ type: "adv_submit_failed", reason: "missing_user" });
       return res.status(400).json({ message: "userId is required" });
@@ -658,22 +619,15 @@ app.post("/api/advanced/submit", async (req, res) => {
     const aQ = safeArrayOfStrings(aiQuestions);
     const aA = safeArrayOfStrings(aiAnswers);
 
-    if (
-      gQ.length !== ADV_GENERIC_QUESTIONS.length ||
-      gA.length !== ADV_GENERIC_QUESTIONS.length
-    ) {
+    if (gQ.length !== ADV_GENERIC_QUESTIONS.length || gA.length !== ADV_GENERIC_QUESTIONS.length) {
       appendEvent({ type: "adv_submit_failed", reason: "bad_generic_lengths" });
-      return res
-        .status(400)
-        .json({
-          message: `Must provide ${ADV_GENERIC_QUESTIONS.length} genericQuestions and genericAnswers`,
-        });
+      return res.status(400).json({
+        message: `Must provide ${ADV_GENERIC_QUESTIONS.length} genericQuestions and genericAnswers`,
+      });
     }
     if (aQ.length !== 8 || aA.length !== 8) {
       appendEvent({ type: "adv_submit_failed", reason: "bad_ai_lengths" });
-      return res
-        .status(400)
-        .json({ message: "Must provide 8 aiQuestions and 8 aiAnswers" });
+      return res.status(400).json({ message: "Must provide 8 aiQuestions and 8 aiAnswers" });
     }
 
     const profile =
@@ -699,13 +653,11 @@ app.post("/api/advanced/submit", async (req, res) => {
       userId: String(userId),
       id: String(doc._id),
     });
-    return res
-      .status(201)
-      .json({
-        message: "Advanced questionnaire saved",
-        id: doc._id,
-        createdAt: doc.createdAt,
-      });
+    return res.status(201).json({
+      message: "Advanced questionnaire saved",
+      id: doc._id,
+      createdAt: doc.createdAt,
+    });
   } catch (err) {
     console.error("Advanced submit error:", err);
     appendEvent({ type: "adv_submit_exception", error: err?.message });
@@ -719,13 +671,9 @@ app.get("/api/advanced/my", async (req, res) => {
     const { userId } = req.query || {};
     if (!userId) {
       appendEvent({ type: "adv_my_failed", reason: "missing_user" });
-      return res
-        .status(400)
-        .json({ message: "userId query parameter is required" });
+      return res.status(400).json({ message: "userId query parameter is required" });
     }
-    const doc = await AdvancedQA.findOne({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const doc = await AdvancedQA.findOne({ userId }).sort({ createdAt: -1 }).lean();
     appendEvent({
       type: "adv_my_ok",
       userId: String(userId),
@@ -780,29 +728,19 @@ app.post("/api/jobs/generate", async (req, res) => {
     }
 
     const profile = await getProfileSnapshot(userId);
-    const adv = await AdvancedQA.findOne({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const adv = await AdvancedQA.findOne({ userId }).sort({ createdAt: -1 }).lean();
 
-    if (
-      !profile?.major &&
-      (!profile?.interests || profile.interests.length === 0)
-    ) {
+    if (!profile?.major && (!profile?.interests || profile.interests.length === 0)) {
       appendEvent({ type: "jobs_generate_failed", reason: "no_profile" });
-      return res
-        .status(400)
-        .json({ message: "Please complete your profile first." });
+      return res.status(400).json({ message: "Please complete your profile first." });
     }
 
     const GEMINI_API_KEY = getGeminiApiKey();
     if (!GEMINI_API_KEY) {
       appendEvent({ type: "jobs_generate_failed", reason: "missing_api_key" });
-      return res
-        .status(500)
-        .json({
-          message:
-            "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env",
-        });
+      return res.status(500).json({
+        message: "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env",
+      });
     }
 
     const model = "gemini-2.0-flash";
@@ -813,9 +751,7 @@ app.post("/api/jobs/generate", async (req, res) => {
     const profileText = [
       profile?.major ? `Major: ${profile.major}` : null,
       profile?.classYear ? `Class Year: ${profile.classYear}` : null,
-      profile?.interests?.length
-        ? `Interests: ${profile.interests.join(", ")}`
-        : null,
+      profile?.interests?.length ? `Interests: ${profile.interests.join(", ")}` : null,
     ]
       .filter(Boolean)
       .join("\n");
@@ -824,13 +760,11 @@ app.post("/api/jobs/generate", async (req, res) => {
       ? [
           "GENERIC Q&A:",
           ...(adv.genericQuestions || []).map(
-            (q, i) =>
-              `${i + 1}. ${q}\nAnswer: ${String(adv.genericAnswers?.[i] || "")}`,
+            (q, i) => `${i + 1}. ${q}\nAnswer: ${String(adv.genericAnswers?.[i] || "")}`,
           ),
           "PERSONALIZED Q&A:",
           ...(adv.aiQuestions || []).map(
-            (q, i) =>
-              `${i + 1}. ${q}\nAnswer: ${String(adv.aiAnswers?.[i] || "")}`,
+            (q, i) => `${i + 1}. ${q}\nAnswer: ${String(adv.aiAnswers?.[i] || "")}`,
           ),
         ].join("\n")
       : "No advanced questionnaire found yet.";
@@ -867,9 +801,7 @@ app.post("/api/jobs/generate", async (req, res) => {
         status: resp.status,
         body: data,
       });
-      return res
-        .status(resp.status)
-        .json({ message: "Gemini API error", body: data });
+      return res.status(resp.status).json({ message: "Gemini API error", body: data });
     }
 
     const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -897,9 +829,7 @@ app.post("/api/jobs/generate", async (req, res) => {
           const m = line.match(/^(.*?)[-:](.*?)(\d{1,3})/);
           const title = line.replace(/[-:].*$/, "").trim();
           const score = m ? parseInt(m[3], 10) : 0;
-          const reason = line.includes(":")
-            ? line.split(":").slice(1).join(":").trim()
-            : "";
+          const reason = line.includes(":") ? line.split(":").slice(1).join(":").trim() : "";
           return {
             title,
             score: Math.max(0, Math.min(100, score || 0)),
@@ -912,9 +842,7 @@ app.post("/api/jobs/generate", async (req, res) => {
 
     if (!jobs.length) {
       appendEvent({ type: "jobs_generate_bad_output" });
-      return res
-        .status(502)
-        .json({ message: "AI did not return job matches", raw: textOut });
+      return res.status(502).json({ message: "AI did not return job matches", raw: textOut });
     }
 
     // sort by score desc
@@ -937,15 +865,13 @@ app.post("/api/jobs/generate", async (req, res) => {
       id: String(doc._id),
       count: jobs.length,
     });
-    return res
-      .status(201)
-      .json({
-        message: "Job matches generated",
-        matches: jobs,
-        id: doc._id,
-        createdAt: doc.createdAt,
-        profileSnapshot: doc.profileSnapshot,
-      });
+    return res.status(201).json({
+      message: "Job matches generated",
+      matches: jobs,
+      id: doc._id,
+      createdAt: doc.createdAt,
+      profileSnapshot: doc.profileSnapshot,
+    });
   } catch (err) {
     console.error("Jobs generate error:", err);
     appendEvent({ type: "jobs_generate_exception", error: err?.message });
@@ -959,13 +885,9 @@ app.get("/api/jobs/my", async (req, res) => {
     const { userId } = req.query || {};
     if (!userId) {
       appendEvent({ type: "jobs_my_failed", reason: "missing_user" });
-      return res
-        .status(400)
-        .json({ message: "userId query parameter is required" });
+      return res.status(400).json({ message: "userId query parameter is required" });
     }
-    const doc = await JobMatch.findOne({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const doc = await JobMatch.findOne({ userId }).sort({ createdAt: -1 }).lean();
     appendEvent({
       type: "jobs_my_ok",
       userId: String(userId),
@@ -1054,7 +976,11 @@ app.get("/api/job-postings", async (req, res) => {
     });
 
     const withScores = await attachMatchPercent(userId, base);
-    appendEvent({ type: "job_postings_list", count: withScores.length, userId: userId ? String(userId) : undefined });
+    appendEvent({
+      type: "job_postings_list",
+      count: withScores.length,
+      userId: userId ? String(userId) : undefined,
+    });
     return res.json({ items: withScores });
   } catch (err) {
     console.error("Job postings list error:", err);
@@ -1080,17 +1006,13 @@ app.post("/api/job-postings", async (req, res) => {
         { title: "IT Support Associate", company: "CampusTech" },
         { title: "Product Management Intern", company: "InnoLabs" },
       ];
-      const docs = await JobPosting.insertMany(
-        sample.map((s) => ({ ...s, postedAt: new Date() })),
-      );
+      const docs = await JobPosting.insertMany(sample.map((s) => ({ ...s, postedAt: new Date() })));
       appendEvent({ type: "job_postings_seed", count: docs.length });
       return res.status(201).json({ message: "Seeded", count: docs.length });
     }
 
     if (!title || !company) {
-      return res
-        .status(400)
-        .json({ message: "title and company are required" });
+      return res.status(400).json({ message: "title and company are required" });
     }
     const doc = await JobPosting.create({ title, company, postedAt: new Date() });
     appendEvent({ type: "job_posting_created", id: String(doc._id) });
@@ -1113,9 +1035,7 @@ app.post("/api/job-postings/:id/apply", async (req, res) => {
     const doc = await JobPosting.findById(id);
     if (!doc) return res.status(404).json({ message: "Not found" });
 
-    const exists = (doc.applicants || []).some(
-      (a) => String(a.userId) === String(userId),
-    );
+    const exists = (doc.applicants || []).some((a) => String(a.userId) === String(userId));
     if (!exists) {
       doc.applicants.push({ userId, appliedAt: new Date() });
       await doc.save();
@@ -1151,12 +1071,16 @@ app.post("/api/resume/extract", upload.single("file"), async (req, res) => {
       const result = await mammoth.extractRawText({ buffer });
       text = result?.value || "";
     } else if (ext === "doc") {
-      return res.status(415).json({ message: "Legacy .doc format not supported. Please upload a .docx or PDF." });
+      return res
+        .status(415)
+        .json({ message: "Legacy .doc format not supported. Please upload a .docx or PDF." });
     } else {
       return res.status(415).json({ message: "Unsupported file type. Upload a PDF or DOCX." });
     }
 
-    text = String(text || "").replace(/\s+/g, " ").trim();
+    text = String(text || "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (!text) {
       return res.status(422).json({ message: "Could not extract text from file." });
     }
@@ -1181,14 +1105,65 @@ app.post("/api/resume/feedback", async (req, res) => {
 
     // Stopwords (lowercase) to exclude from heuristic keywords
     const STOPWORDS = new Set([
-      "the","and","or","a","an","to","of","in","on","for","with","by","at","from","is","are","was","were","be","been","being","this","that","these","those","as","it","its","but","if","not","no","yes","you","your","we","our","they","their","he","she","him","her","them","i","me","my","mine","ours", "using", "time",
+      "the",
+      "and",
+      "or",
+      "a",
+      "an",
+      "to",
+      "of",
+      "in",
+      "on",
+      "for",
+      "with",
+      "by",
+      "at",
+      "from",
+      "is",
+      "are",
+      "was",
+      "were",
+      "be",
+      "been",
+      "being",
+      "this",
+      "that",
+      "these",
+      "those",
+      "as",
+      "it",
+      "its",
+      "but",
+      "if",
+      "not",
+      "no",
+      "yes",
+      "you",
+      "your",
+      "we",
+      "our",
+      "they",
+      "their",
+      "he",
+      "she",
+      "him",
+      "her",
+      "them",
+      "i",
+      "me",
+      "my",
+      "mine",
+      "ours",
+      "using",
+      "time",
     ]);
 
     // If user opts not to compare to jobs, return keywords only
     if (!compare) {
       const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
       const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
-      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const TECH =
+        /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
       const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
       entries.sort((a, b) => {
         const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
@@ -1202,7 +1177,8 @@ app.post("/api/resume/feedback", async (req, res) => {
     if (!Array.isArray(jobs) || jobs.length === 0) {
       const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
       const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
-      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const TECH =
+        /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
       const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
       entries.sort((a, b) => {
         const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
@@ -1216,7 +1192,9 @@ app.post("/api/resume/feedback", async (req, res) => {
 
     const GEMINI_API_KEY = getGeminiApiKey();
     if (!GEMINI_API_KEY) {
-      return res.status(500).json({ message: "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env" });
+      return res
+        .status(500)
+        .json({ message: "Server not configured: Set GEMINI_API_KEY (or GOOGLE_API_KEY) in .env" });
     }
 
     const model = "gemini-2.0-flash";
@@ -1238,13 +1216,13 @@ app.post("/api/resume/feedback", async (req, res) => {
       "Then, for each job in SAVED JOBS, compute a match percentage (0-100) based on overlap between these KEYWORDS and the job text (title/company/description).",
       "For each job, include which KEYWORDS matched as matchedKeywords.",
       "Return strictly valid JSON only following this schema:",
-      '{"keywords": ["keyword"...], "jobs": [{"id": string|number, "title": string, "company": string, "score": number, "matchedKeywords": ["..."], "notes": string}]}'
+      '{"keywords": ["keyword"...], "jobs": [{"id": string|number, "title": string, "company": string, "score": number, "matchedKeywords": ["..."], "notes": string}]}',
     ].join(" ");
 
     const sections = [
       `RESUME TEXT\n${text.slice(0, 15000)}`,
       `SAVED JOBS\n${jobList}`,
-      'OUTPUT FORMAT\n{"keywords": ["..."], "jobs": [{"id": "...", "title": "...", "company": "...", "score": 0, "matchedKeywords": ["..."], "notes": "..."}]}'
+      'OUTPUT FORMAT\n{"keywords": ["..."], "jobs": [{"id": "...", "title": "...", "company": "...", "score": 0, "matchedKeywords": ["..."], "notes": "..."}]}',
     ].join("\n\n");
 
     const payload = { contents: [{ parts: [{ text: `${prompt}\n\n${sections}` }] }] };
@@ -1252,7 +1230,7 @@ app.post("/api/resume/feedback", async (req, res) => {
     const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-goog-api-key": GEMINI_API_KEY },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     const data = await resp.json().catch(() => ({}));
@@ -1272,7 +1250,8 @@ app.post("/api/resume/feedback", async (req, res) => {
       // Fallback: derive keywords from resume text frequency
       const resumeWords = text.toLowerCase().match(/[a-zA-Z][a-zA-Z0-9+.#-]{2,}/g) || [];
       const freq = resumeWords.reduce((m, w) => ((m[w] = (m[w] || 0) + 1), m), {});
-      const TECH = /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
+      const TECH =
+        /(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)/i;
       const entries = Object.entries(freq).filter(([w]) => !STOPWORDS.has(w));
       entries.sort((a, b) => {
         const as = a[1] + (TECH.test(a[0]) ? 5 : 0);
@@ -1302,7 +1281,7 @@ app.post("/api/resume/feedback", async (req, res) => {
           score: Math.max(0, Math.min(100, score)),
           matchedKeywords: matched,
           missingKeywords,
-          notes: "Heuristic fallback based on resume keywords."
+          notes: "Heuristic fallback based on resume keywords.",
         };
       });
       return res.json({ keywords: baseKeywords, jobs: results, ai: false });
@@ -1310,7 +1289,10 @@ app.post("/api/resume/feedback", async (req, res) => {
 
     // Normalize AI output
     const keywords = Array.isArray(parsed.keywords)
-      ? parsed.keywords.map((k) => String(k)).filter(Boolean).slice(0, 30)
+      ? parsed.keywords
+          .map((k) => String(k))
+          .filter(Boolean)
+          .slice(0, 30)
       : [];
     const resultsRaw = parsed.jobs.map((j, i) => ({
       id: j.id ?? jobs[i]?.id ?? i,
@@ -1318,9 +1300,12 @@ app.post("/api/resume/feedback", async (req, res) => {
       company: String(j.company || jobs[i]?.company || ""),
       score: Math.max(0, Math.min(100, parseInt(j.score, 10) || 0)),
       matchedKeywords: Array.isArray(j.matchedKeywords)
-        ? j.matchedKeywords.map((k) => String(k)).filter(Boolean).slice(0, 30)
+        ? j.matchedKeywords
+            .map((k) => String(k))
+            .filter(Boolean)
+            .slice(0, 30)
         : [],
-      notes: String(j.notes || "")
+      notes: String(j.notes || ""),
     }));
 
     const filteredKeywords = keywords;
@@ -1340,7 +1325,11 @@ app.post("/api/resume/feedback", async (req, res) => {
         .filter((w) => !w.includes(".net"))
         .filter((w) => !w.includes(".edu"))
         .filter((w) => !STOPWORDS.has(w))
-        .filter((w) => /^(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)$/i.test(w));
+        .filter((w) =>
+          /^(python|java(script)?|typescript|c\+\+|c#|c\b|go|golang|rust|ruby|php|sql|mysql|postgres|postgresql|mongodb|redis|oracle|html|css|sass|tailwind|react|angular|vue|node(\.js)?|express(\.js)?|next(\.js)?|nuxt|django|flask|spring|springboot|\.net|dotnet|kubernetes|docker|terraform|ansible|grafana|prometheus|aws|azure|gcp|google\s?cloud|jenkins|git(hub|lab)?|ci\/?cd|graphql|rest|api|pandas|numpy|tensorflow|pytorch|scikit-?learn|sklearn|keras|linux|bash|powershell)$/i.test(
+            w,
+          ),
+        );
       const missingKeywords = jobTech.filter((w) => !resumeSet.has(w)).slice(0, 4);
       return { ...r, missingKeywords };
     });
@@ -1360,8 +1349,19 @@ app.use((err, req, res, next) => {
     const status = err?.statusCode || err?.status || 500;
     const traceId = (crypto.randomUUID && crypto.randomUUID()) || Date.now().toString(36);
     const code = err?.code || (status === 500 ? "internal_error" : "request_error");
-    const msg = status === 500 && process.env.NODE_ENV === "production" ? "Server error" : (err?.message || "Request failed");
-    appendEvent({ type: "http_error", status, path: req.path, method: req.method, code, traceId, msg });
+    const msg =
+      status === 500 && process.env.NODE_ENV === "production"
+        ? "Server error"
+        : err?.message || "Request failed";
+    appendEvent({
+      type: "http_error",
+      status,
+      path: req.path,
+      method: req.method,
+      code,
+      traceId,
+      msg,
+    });
     res.status(status).json({ error: { code, message: msg, traceId } });
   } catch (middlewareErr) {
     console.error("Error in error middleware:", middlewareErr);

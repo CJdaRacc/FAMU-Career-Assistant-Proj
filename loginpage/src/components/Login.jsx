@@ -58,10 +58,7 @@ export default function Login({ onAuth }) {
           <div className="col-12 col-md-8 col-lg-6 d-flex">
             <div className="card shadow-sm h-100 border-0 rounded-0 flex-fill">
               <div className="card-body p-4 p-md-5 d-flex flex-column justify-content-center">
-                <h2
-                  className="text-center mb-4"
-                  style={{ fontFamily: '"Limelight", serif' }}
-                >
+                <h2 className="text-center mb-4" style={{ fontFamily: '"Limelight", serif' }}>
                   {mode === "login" ? "Welcome Back" : "Create Your Account"}
                 </h2>
 
@@ -74,7 +71,12 @@ export default function Login({ onAuth }) {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="mt-3" role="form" aria-label={`auth-${mode}-form`}>
+                <form
+                  onSubmit={handleSubmit}
+                  className="mt-3"
+                  role="form"
+                  aria-label={`auth-${mode}-form`}
+                >
                   <div className="mb-3">
                     <label htmlFor="email" className="form-label">
                       Email

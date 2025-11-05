@@ -36,8 +36,7 @@ export default function AIQuestions({ user, onDone }) {
         setError(null);
         const res = await fetch("/api/advanced/init-questions");
         const data = await res.json();
-        if (!res.ok)
-          throw new Error(data?.message || "Failed to load questions");
+        if (!res.ok) throw new Error(data?.message || "Failed to load questions");
         if (!active) return;
         setGenericQs(data.questions || []);
         setGenericAns(Array((data.questions || []).length).fill(""));
@@ -83,17 +82,11 @@ export default function AIQuestions({ user, onDone }) {
         body: JSON.stringify({
           userId: user.userId,
           genericAnswers: genericAns,
-          targetCareer:
-            useTargetCareer && targetCareer.trim()
-              ? targetCareer.trim()
-              : undefined,
+          targetCareer: useTargetCareer && targetCareer.trim() ? targetCareer.trim() : undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok)
-        throw new Error(
-          data?.message || "Failed to generate follow-up questions",
-        );
+      if (!res.ok) throw new Error(data?.message || "Failed to generate follow-up questions");
       const questions = Array.isArray(data.aiQuestions) ? data.aiQuestions : [];
       setAiQs(questions);
       setAiAns(Array(questions.length).fill(""));
@@ -146,8 +139,8 @@ export default function AIQuestions({ user, onDone }) {
                 AI Questions
               </h2>
               <p className="text-muted">
-                Answer 6 starter questions. We’ll then generate 8 personalized
-                follow-ups tailored to a specific career.
+                Answer 6 starter questions. We’ll then generate 8 personalized follow-ups tailored
+                to a specific career.
               </p>
               {error && (
                 <div className="alert alert-danger py-2" role="alert">
@@ -159,10 +152,7 @@ export default function AIQuestions({ user, onDone }) {
                 <div>
                   <div className="mb-3">
                     <div className="d-flex justify-content-between align-items-center mb-1">
-                      <label
-                        className="form-label fw-semibold m-0"
-                        htmlFor="targetCareer"
-                      >
+                      <label className="form-label fw-semibold m-0" htmlFor="targetCareer">
                         Target Career (optional)
                       </label>
                       <div className="form-check form-switch">
@@ -203,22 +193,26 @@ export default function AIQuestions({ user, onDone }) {
                       idx === 0
                         ? ["Remote", "Hybrid", "On-Site", "Other"]
                         : idx === 1
-                        ? ["Startup", "Mid-Size", "Large Enterprise", "Other"]
-                        : idx === 2
-                        ? ["Intership", "Full time", "Research", "Freelance"]
-                        : ["Option A", "Option B", "Option C", "Option D"];
+                          ? ["Startup", "Mid-Size", "Large Enterprise", "Other"]
+                          : idx === 2
+                            ? ["Intership", "Full time", "Research", "Freelance"]
+                            : ["Option A", "Option B", "Option C", "Option D"];
 
                     const tokens = (genericAns[idx] || "").split("; ").filter(Boolean);
                     const hasOther = tokens.some((t) => t === "Other" || t.startsWith("Other:"));
                     const otherToken = tokens.find((t) => t.startsWith("Other:"));
-                    const otherValueFromAns = otherToken ? otherToken.slice(6).trim().replace(/^:\s*/, "") : "";
+                    const otherValueFromAns = otherToken
+                      ? otherToken.slice(6).trim().replace(/^:\s*/, "")
+                      : "";
                     const otherText = otherInputs[idx] ?? otherValueFromAns;
 
                     const toggleSelect = (opt) => {
                       let nextTokens = [...tokens];
                       if (opt === "Other") {
                         // Remove any existing Other token
-                        nextTokens = nextTokens.filter((t) => !(t === "Other" || t.startsWith("Other:")));
+                        nextTokens = nextTokens.filter(
+                          (t) => !(t === "Other" || t.startsWith("Other:")),
+                        );
                         if (!hasOther) {
                           // Add a placeholder Other token; will be replaced by typed value if provided
                           nextTokens.push(otherText ? `Other: ${otherText}` : "Other");
@@ -237,7 +231,9 @@ export default function AIQuestions({ user, onDone }) {
                     const handleOtherChange = (val) => {
                       setOtherInputs((prev) => ({ ...prev, [idx]: val }));
                       // Update the answer string with the latest Other value if Other is selected
-                      let nextTokens = tokens.filter((t) => !(t === "Other" || t.startsWith("Other:")));
+                      let nextTokens = tokens.filter(
+                        (t) => !(t === "Other" || t.startsWith("Other:")),
+                      );
                       if (hasOther) {
                         const trimmedVal = val.trim();
                         // Keep a token even if empty to preserve selection; backend expects non-empty answer overall
@@ -262,11 +258,7 @@ export default function AIQuestions({ user, onDone }) {
                                       className="form-check-input"
                                       type="checkbox"
                                       id={`q${idx}-opt${i}`}
-                                      checked={
-                                        opt === "Other"
-                                          ? hasOther
-                                          : tokens.includes(opt)
-                                      }
+                                      checked={opt === "Other" ? hasOther : tokens.includes(opt)}
                                       onChange={() => toggleSelect(opt)}
                                     />
                                     <label className="form-check-label" htmlFor={`q${idx}-opt${i}`}>
@@ -343,9 +335,7 @@ export default function AIQuestions({ user, onDone }) {
                     onClick={handleGenerate}
                     disabled={loading || !canGenerate}
                   >
-                    {loading
-                      ? "Generating…"
-                      : "Generate Personalized Questions"}
+                    {loading ? "Generating…" : "Generate Personalized Questions"}
                   </button>
                 </div>
               )}
@@ -353,8 +343,7 @@ export default function AIQuestions({ user, onDone }) {
               {stage === "ai" && (
                 <div>
                   <div className="alert alert-info py-2">
-                    We generated these based on your profile, answers, and
-                    target career.
+                    We generated these based on your profile, answers, and target career.
                   </div>
                   {aiQs.map((q, idx) => (
                     <div className="mb-3" key={idx}>
@@ -381,9 +370,7 @@ export default function AIQuestions({ user, onDone }) {
               )}
 
               {stage === "done" && (
-                <div className="alert alert-success">
-                  Thanks! Your responses were saved.
-                </div>
+                <div className="alert alert-success">Thanks! Your responses were saved.</div>
               )}
             </div>
           </div>

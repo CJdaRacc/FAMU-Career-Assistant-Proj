@@ -1,0 +1,22 @@
+# Dependencies and build outputs
+node_modules
+.dist
+.vite
+dist
+coverage
+
+# Logs and data files
+*.log
+server/data/*.log
+
+# Lockfiles and package manager files we don't want to reformat
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Git and IDE
+.git
+.idea
+
+# Misc
+.DS_Store
