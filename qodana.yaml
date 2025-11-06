@@ -1,50 +1,10 @@
-#-------------------------------------------------------------------------------#
-#               Qodana analysis is configured by qodana.yaml file               #
-#             https://www.jetbrains.com/help/qodana/qodana-yaml.html            #
-#-------------------------------------------------------------------------------#
+####################################################################################################################
+# WARNING: Do not store sensitive information in this file, as its contents will be included in the Qodana report. #
+####################################################################################################################
 
-#################################################################################
-#              WARNING: Do not store sensitive information in this file,        #
-#               as its contents will be included in the Qodana report.          #
-#################################################################################
 version: "1.0"
-
-# Select an inspection profile for code analysis
+linter: jetbrains/qodana-jvm:2025.2
 profile:
   name: qodana.recommended
-
-# Enable/disable specific inspections (optional)
-#include:
-#  - name: <InspectionIdToEnable>
-
-exclude:
-  # The project does not follow StandardJS formatting; rely on Prettier instead
-  - name: TYPESCRIPT_STANDARD
-
-# Exclude directories/files from scanning to speed up analysis
-excludePaths:
-  - .git
-  - node_modules
-  - loginpage/node_modules
-  - loginpage/dist
-  - loginpage/.vite
-  - loginpage/coverage
-  - coverage
-
-# Execute shell commands before Qodana execution (applied in CI/CD pipeline)
-# Install dependencies so Qodana JS has project context (types, eslint plugins, etc.)
-bootstrap: |
-  npm ci --prefix loginpage
-
-# Install IDE plugins before Qodana execution (optional)
-#plugins:
-#  - id: <plugin.id> # plugin id can be found at https://plugins.jetbrains.com
-
-# Quality gate. Keep conservative for the first runs to gather a baseline.
-failureConditions:
-  severityThresholds:
-    critical: 1 # fail if any critical problems are found
-
-# Qodana supports many languages. For JS/TS projects use the JS linter image.
-# For all supported linters see https://www.jetbrains.com/help/qodana/linters.html
-linter: jetbrains/qodana-js:2025.2
+include:
+  - name: CheckDependencyLicenses
