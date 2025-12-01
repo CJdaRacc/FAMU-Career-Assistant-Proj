@@ -13,7 +13,7 @@ export default function Navbar({ user, onLogout }) {
 
   return (
     <nav className="navbar navbar-expand-lg navbar-famu">
-      <div className="container">
+      <div className="container-fluid">
         <span className="navbar-brand famu-brand">
           <span className="brand-pill">FAMU</span>
           <span className="brand-title ms-2">Career Assistant</span>
@@ -30,7 +30,7 @@ export default function Navbar({ user, onLogout }) {
           <span className="navbar-toggler-icon"></span>
         </button>
         <div className="collapse navbar-collapse" id="mainNavbar">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+          <ul className="navbar-nav mx-auto mb-2 mb-lg-0 justify-content-center gap-2 gap-md-3">
             <li className="nav-item">
               <button
                 className="nav-link btn btn-link text-white-50"
@@ -85,7 +85,7 @@ export default function Navbar({ user, onLogout }) {
             )}
             <button className="btn btn-light btn-sm" onClick={handleBackToLogin}>
               <i className="fa-solid fa-arrow-right-from-bracket me-1"></i>
-              Back to Login
+              Logout
             </button>
           </div>
         </div>
