@@ -122,20 +122,50 @@ body {
   color: #fff;
 }
 
-/* Green circular match percentage */
+/* Pretty progress ring for job match percentage */
 .match-badge {
-  width: 72px;
-  height: 72px;
-  min-width: 72px;
+  width: 90px;
+  height: 90px;
+  min-width: 90px;
+  position: relative;
   border-radius: 50%;
-  background: var(--famu-green);
-  color: #fff;
+  /* Text styling inside the ring */
+  color: #FFFFFF; /* requirement: white number on orange center */
+  font-weight: 800; /* requirement: bold */
+  font-size: 1.05rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 1.1rem;
+}
+
+/* Use pseudo-element layers for the ring and solid center */
+.match-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* requirement: conic-gradient with deep forest green fill and white remainder */
+  background: conic-gradient(#196F3D calc(var(--score, 0) * 3.6deg), #ffffff 0);
+  /* create the hollow (donut) center */
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(50% - 6px), #000 0);
+  mask: radial-gradient(farthest-side, transparent calc(50% - 6px), #000 0);
+  /* subtle elevation for a clean look against the orange card */
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  z-index: 0; /* ring layer */
+}
+/* Solid orange center with white number on top */
+.match-badge::after {
+  content: "";
+  position: absolute;
+  inset: 12px; /* matches 6px ring thickness on both sides */
+  border-radius: 50%;
+  background: var(--famu-orange, #f07f13); /* Orange center fill */
+  z-index: 1; /* above ring, below text */
+}
+/* Ensure inner text stays above the graphics */
+.match-badge > * {
+  position: relative;
+  z-index: 2; /* highest */
 }
 
 /* Make buttons readable on orange */
