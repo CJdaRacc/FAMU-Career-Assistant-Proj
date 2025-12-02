@@ -42,10 +42,10 @@ export default function AdvancedReview({ user }) {
         <div className="col-12 col-lg-9">
           <div className="card shadow-sm">
             <div className="card-body p-4">
-              <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
+              <h2 className="mb-3 text-center" style={{ fontFamily: '"Limelight", serif' }}>
                 My Personalized Q&A
               </h2>
-              <p className="text-muted">Only you can view your saved questions and answers.</p>
+              <p className="text-muted text-center">Only you can view your saved questions and answers.</p>
 
               {loading && <div className="alert alert-info py-2">Loading…</div>}
               {error && <div className="alert alert-danger py-2">{error}</div>}
@@ -59,7 +59,10 @@ export default function AdvancedReview({ user }) {
               {!loading && !error && data && (
                 <div>
                   <div className="mb-3">
-                    <h5 className="mb-2">Profile Snapshot</h5>
+                    <h5 className="mb-2">
+                      <span className="me-2" role="img" aria-label="student profile">🧑‍🎓</span>
+                      Profile Snapshot
+                    </h5>
                     <ul className="list-unstyled mb-0">
                       {profile.major && (
                         <li>
@@ -82,16 +85,19 @@ export default function AdvancedReview({ user }) {
                   <div className="mb-4">
                     <h5 className="mb-2">Generic Questions & Answers</h5>
                     {Array.isArray(data.genericQuestions) && data.genericQuestions.length > 0 ? (
-                      <ol className="mb-0">
-                        {data.genericQuestions.map((q, i) => (
-                          <li key={`g-${i}`} className="mb-2">
-                            <div className="fw-semibold">{q}</div>
-                            <div className="text-muted">
-                              Answer: {String(data.genericAnswers?.[i] || "") || <em>(none)</em>}
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
+                      <div className="mb-0">
+                        {data.genericQuestions.map((q, i) => {
+                          const ans = data.genericAnswers?.[i];
+                          return (
+                            <details key={`g-${i}`} className="mb-2 qa-dropdown">
+                              <summary className="fw-semibold qa-summary">{q}</summary>
+                              <div className="text-muted mt-1 qa-content">
+                                Answer: {ans ? ans : <em>(none)</em>}
+                              </div>
+                            </details>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <div className="text-muted">No generic responses found.</div>
                     )}
@@ -100,16 +106,19 @@ export default function AdvancedReview({ user }) {
                   <div>
                     <h5 className="mb-2">Personalized Questions & Answers</h5>
                     {Array.isArray(data.aiQuestions) && data.aiQuestions.length > 0 ? (
-                      <ol className="mb-0">
-                        {data.aiQuestions.map((q, i) => (
-                          <li key={`a-${i}`} className="mb-2">
-                            <div className="fw-semibold">{q}</div>
-                            <div className="text-muted">
-                              Answer: {String(data.aiAnswers?.[i] || "") || <em>(none)</em>}
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
+                      <div className="mb-0">
+                        {data.aiQuestions.map((q, i) => {
+                          const ans = data.aiAnswers?.[i];
+                          return (
+                            <details key={`a-${i}`} className="mb-2 qa-dropdown">
+                              <summary className="fw-semibold qa-summary">{q}</summary>
+                              <div className="text-muted mt-1 qa-content">
+                                Answer: {ans ? ans : <em>(none)</em>}
+                              </div>
+                            </details>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <div className="text-muted">No personalized responses found.</div>
                     )}

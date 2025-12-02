@@ -57,21 +57,17 @@ export default function Quiz({ user, onDone }) {
     (arr || []).includes("Other"),
   );
 
-  const toggleField = (field) => {
-    setSelectedFields((prev) => {
-      const has = prev.includes(field);
-      const next = has ? prev.filter((f) => f !== field) : [...prev, field];
-      // If unchecking, also remove its selections
-      setFieldSelections((old) => {
-        if (has) {
-          const copy = { ...old };
-          delete copy[field];
-          return copy;
-        }
-        return old;
+  const handleMajorChange = (e) => {
+    const values = Array.from(e.target.selectedOptions || []).map((o) => o.value);
+    // prune interests for any deselected fields
+    setFieldSelections((old) => {
+      const next = { ...old };
+      Object.keys(next).forEach((f) => {
+        if (!values.includes(f)) delete next[f];
       });
       return next;
     });
+    setSelectedFields(values);
   };
 
   const handleFieldInterestChange = (field, e) => {
@@ -139,40 +135,35 @@ export default function Quiz({ user, onDone }) {
         <div className="col-12 col-lg-8">
           <div className="card shadow-sm">
             <div className="card-body p-4">
-              <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
+              <h2 className="mb-3 text-center" style={{ fontFamily: '"Limelight", serif' }}>
                 Student Profile Setup
               </h2>
-              <p className="text-muted">Tell us your major, related interests, and class year.</p>
+              <p className="text-muted text-center">Tell us your major, related interests, and class year.</p>
               {error && (
                 <div className="alert alert-danger py-2" role="alert">
                   {error}
                 </div>
               )}
               <form onSubmit={handleSubmit}>
-                {/* General fields as checkboxes */}
+                {/* General fields as dropdown (multi-select) */}
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Major</label>
-                  <div className="row">
+                  <label className="form-label fw-semibold" htmlFor="majors">Major(s)</label>
+                  <select
+                    id="majors"
+                    className="form-select"
+                    multiple
+                    size={Math.min(fieldNames.length, 8)}
+                    value={selectedFields}
+                    onChange={handleMajorChange}
+                  >
                     {fieldNames.map((field) => (
-                      <div className="col-12 col-md-6" key={field}>
-                        <div className="form-check mb-2">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id={`field-${field}`}
-                            checked={selectedFields.includes(field)}
-                            onChange={() => toggleField(field)}
-                          />
-                          <label className="form-check-label" htmlFor={`field-${field}`}>
-                            {field}
-                          </label>
-                        </div>
-                      </div>
+                      <option key={field} value={field}>
+                        {field}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                   <div className="form-text">
-                    Select one or more fields. Interest options will appear below for each selected
-                    field.
+                    Hold Ctrl (Windows) or Command (Mac) to select multiple. Interest options will appear below for each selected field.
                   </div>
                 </div>
 

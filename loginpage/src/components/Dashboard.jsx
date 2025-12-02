@@ -20,25 +20,23 @@ export default function Dashboard({ user, onLogout }) {
         <div className="col-12 col-lg-8">
           <div className="card shadow-sm">
             <div className="card-body p-4">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
-                    Dashboard
-                  </h2>
-                  <p className="text-muted">Welcome{user?.email ? `, ${user.email}` : ""}!</p>
-                </div>
-              </div>
+                <div className="text-center mb-3">
+                <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
+                  Dashboard
+                </h2>
+                <p className="text-muted">Welcome{user?.email ? `, ${user.email}` : ""}!</p>
 
-              {user?.createdAt && (
-                <p className="mb-0">
-                  <strong>Account created:</strong> {new Date(user.createdAt).toLocaleString()}
-                </p>
-              )}
-              {user?.questionnaireCompleted ? (
-                <p className="text-success mt-2">Questionnaire completed. Thank you!</p>
-              ) : (
-                <p className="text-warning mt-2">Questionnaire not completed yet.</p>
-              )}
+                {user?.createdAt && (
+                  <p className="mb-0">
+                    <strong>Account created:</strong> {new Date(user.createdAt).toLocaleString()}
+                  </p>
+                )}
+                {user?.questionnaireCompleted ? (
+                  <p className="text-success mt-2">Questionnaire completed. Thank you!</p>
+                ) : (
+                  <p className="text-warning mt-2">Questionnaire not completed yet.</p>
+                )}
+              </div>
 
               {/* Job Recommendations */}
               <hr className="my-4" />
@@ -213,7 +211,7 @@ function JobRecommendations({ user }) {
         return (
           <div key={job.id} className="job-card job-card-orange shadow-sm">
             <div className="d-flex align-items-center">
-              <div className="match-badge me-3">
+              <div className="match-badge me-3" style={{ "--score": job.matchPercent }}>
                 <span>{job.matchPercent}%</span>
               </div>
               <div className="flex-grow-1">
