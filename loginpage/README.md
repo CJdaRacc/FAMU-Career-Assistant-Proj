@@ -46,7 +46,7 @@ GEMINI_API_KEY=your_google_generative_ai_key
 
 - npm run dev
 - Backend API: http://127.0.0.1:5000
-- Frontend (Vite): http://localhost:5173 (port may vary)
+- Frontend (Vite): http://localhost:5174 (will auto-pick next free port if busy)
 
 4. Run pieces separately (optional)
 

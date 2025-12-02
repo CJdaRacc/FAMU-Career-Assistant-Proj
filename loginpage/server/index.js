@@ -566,7 +566,7 @@ app.post("/api/advanced/generate", async (req, res) => {
     const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     let questions = [];
     try {
-      const jsonMatch = textOut.match(/\{[\s\S]*\}/);
+      const jsonMatch = textOut.match(/\{[\s\S]*}/);
       const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(textOut);
       if (parsed && Array.isArray(parsed.questions)) {
         questions = parsed.questions

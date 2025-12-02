@@ -17,7 +17,7 @@ This README explains how to set up the environment, run the app, and use all fea
 - loginpage/ — frontend and backend code (monorepo style)
   - src/ — React app
   - server/ — Express API
-  - vite.config.js — proxies /api to the backend on http://127.0.0.1:5000 during dev
+  - vite.config.ts — proxies /api to the backend on http://127.0.0.1:5000 during dev
   - .env — environment configuration (see below)
 
 ## 1) Install dependencies
@@ -51,7 +51,7 @@ MONGODB_URI=
 
 Notes:
 - The backend reads .env from the loginpage folder. You can also create loginpage/.env.local to override values locally.
-- If you change PORT, update the proxy target in loginpage/vite.config.js.
+- If you change PORT, update the proxy target in loginpage/vite.config.ts.
 
 ## 3) Run the app (development)
 From the loginpage directory, start both the backend and the Vite dev server concurrently:
@@ -60,9 +60,9 @@ From the loginpage directory, start both the backend and the Vite dev server con
 
 What happens:
 - Express backend starts on http://127.0.0.1:5000 (or your PORT)
-- Vite dev server starts (default http://localhost:5173) and proxies requests starting with /api to the backend (see vite.config.js)
+- Vite dev server starts (base http://localhost:5174; if busy it will auto-pick the next free port) and proxies requests starting with /api to the backend (see vite.config.ts)
 
-Open the printed Vite URL in your browser (usually http://localhost:5173).
+Open the printed Vite URL in your browser (usually http://localhost:5174).
 
 ## 4) App walkthrough
 The frontend uses hash routes and hides the navbar until you log in or register.
@@ -121,24 +121,24 @@ Run these from a terminal in the loginpage directory while Vite is running (prox
 
 Health checks:
 ```
-curl http://localhost:5173/api/health
-curl http://localhost:5173/api/health/config
+curl http://localhost:5174/api/health
+curl http://localhost:5174/api/health/config
 ```
 
 Register → Login → Save Profile (new form):
 ```
 # Register
-curl -X POST http://localhost:5173/api/register \
+curl -X POST http://localhost:5174/api/register \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@example.com","password":"Password123!"}'
 
 # Login (note the returned userId)
-curl -X POST http://localhost:5173/api/login \
+curl -X POST http://localhost:5174/api/login \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@example.com","password":"Password123!"}'
 
 # Save profile (replace USER_ID)
-curl -X POST http://localhost:5173/api/questionnaire \
+curl -X POST http://localhost:5174/api/questionnaire \
   -H "Content-Type: application/json" \
   -d '{"userId":"USER_ID","major":"Computer Science","interests":["Software Engineering","AI/ML"],"classYear":"2026"}'
 ```
@@ -146,15 +146,15 @@ curl -X POST http://localhost:5173/api/questionnaire \
 Advanced Questionnaire (Gemini key required):
 ```
 # Get the 6 generic questions
-curl http://localhost:5173/api/advanced/init-questions
+curl http://localhost:5174/api/advanced/init-questions
 
 # Generate 8 personalized questions (replace USER_ID)
-curl -X POST http://localhost:5173/api/advanced/generate \
+curl -X POST http://localhost:5174/api/advanced/generate \
   -H "Content-Type: application/json" \
   -d '{"userId":"USER_ID","genericAnswers":["remote","startup","internship","Python & SQL","fintech","10"],"targetCareer":"Data Analyst"}'
 
 # Submit full questionnaire (replace USER_ID; use questions returned from generate)
-curl -X POST http://localhost:5173/api/advanced/submit \
+curl -X POST http://localhost:5174/api/advanced/submit \
   -H "Content-Type: application/json" \
   -d '{"userId":"USER_ID","genericQuestions":["...6 items..."],"genericAnswers":["...6 items..."],"aiQuestions":["...8 items..."],"aiAnswers":["...8 items..."]}'
 ```
@@ -162,18 +162,18 @@ curl -X POST http://localhost:5173/api/advanced/submit \
 Job Matches (Gemini key required):
 ```
 # Generate job matches (replace USER_ID)
-curl -X POST http://localhost:5173/api/jobs/generate \
+curl -X POST http://localhost:5174/api/jobs/generate \
   -H "Content-Type: application/json" \
   -d '{"userId":"USER_ID"}'
 
 # Fetch latest job matches
-curl http://localhost:5173/api/jobs/my?userId=USER_ID
+curl http://localhost:5174/api/jobs/my?userId=USER_ID
 ```
 
 Resume text extraction (PDF/DOCX → text):
 ```
 # Using curl with a sample PDF or DOCX in the current directory
-curl -X POST http://localhost:5173/api/resume/extract \
+curl -X POST http://localhost:5174/api/resume/extract \
   -H "Content-Type: multipart/form-data" \
   -F "file=@./resume.pdf"
 ```
@@ -181,7 +181,7 @@ curl -X POST http://localhost:5173/api/resume/extract \
 Resume feedback (compare to jobs or keywords-only):
 ```
 # Compare to saved jobs: provide jobs array (simplified example)
-curl -X POST http://localhost:5173/api/resume/feedback \
+curl -X POST http://localhost:5174/api/resume/feedback \
   -H "Content-Type: application/json" \
   -d '{
     "resumeText": "Experienced with Python, SQL, React, and AWS...",
@@ -192,7 +192,7 @@ curl -X POST http://localhost:5173/api/resume/feedback \
   }'
 
 # Keywords only (no job comparison)
-curl -X POST http://localhost:5173/api/resume/feedback \
+curl -X POST http://localhost:5174/api/resume/feedback \
   -H "Content-Type: application/json" \
   -d '{
     "resumeText": "Experienced with Python, SQL, React, and AWS...",
@@ -201,7 +201,7 @@ curl -X POST http://localhost:5173/api/resume/feedback \
   }'
 ```
 
-If you prefer to hit the backend directly (bypassing Vite), use http://127.0.0.1:5000 instead of http://localhost:5173 and run the server with:
+If you prefer to hit the backend directly (bypassing Vite), use http://127.0.0.1:5000 instead of http://localhost:5174 and run the server with:
 - npm run server
 
 ## 6) IntelliJ IDEA Run/Debug configuration (optional)
@@ -222,9 +222,9 @@ If you prefer to hit the backend directly (bypassing Vite), use http://127.0.0.1
 - Missing Gemini API key
   - Advanced generation and job matches require GEMINI_API_KEY or GOOGLE_API_KEY. Without it, related endpoints return a configuration error.
 - Port issues
-  - Backend default is 5000 (configurable via PORT). Vite default is 5173 (may auto-pick a new port if busy).
-  - If you change PORT, update the proxy target in loginpage/vite.config.js.
-- Where are logs?
+  - Backend default is 5000 (configurable via PORT). Vite default is 5174 (will auto-pick a new port if busy).
+  - If you change PORT, update the proxy target in loginpage/vite.config.ts.
+  - Where are logs?
   - The server appends JSON lines to server/data/events.log by default (configurable via LOG_FILE). Create directories if needed.
 - Checking server health
-  - Visit http://localhost:5173/api/health (via Vite proxy) or http://127.0.0.1:5000/api/health (direct) to verify the API is up.
+  - Visit http://localhost:5174/api/health (via Vite proxy) or http://127.0.0.1:5000/api/health (direct) to verify the API is up.
