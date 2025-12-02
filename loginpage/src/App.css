@@ -153,13 +153,13 @@ body {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   z-index: 0; /* ring layer */
 }
-/* Solid orange center with white number on top */
+/* Black center with white number on top */
 .match-badge::after {
   content: "";
   position: absolute;
   inset: 12px; /* matches 6px ring thickness on both sides */
   border-radius: 50%;
-  background: var(--famu-orange, #f07f13); /* Orange center fill */
+  background: #000000; /* Black center fill */
   z-index: 1; /* above ring, below text */
 }
 /* Ensure inner text stays above the graphics */
@@ -322,4 +322,53 @@ select:hover {
   box-shadow: 0 0 6px rgba(255, 136, 0, 0.4);
   transform: scale(1.01);
   transition: all 0.2s ease;
+}
+
+/* --- Q&A dropdown cards --- */
+.qa-dropdown {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.qa-dropdown:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  border-color: #d1d5db; /* gray-300 */
+}
+.qa-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  position: relative;
+}
+.qa-summary::-webkit-details-marker {
+  display: none;
+}
+.qa-summary::after {
+  content: "▾";
+  margin-left: auto;
+  color: #6b7280; /* gray-500 */
+  transition: transform 160ms ease;
+}
+.qa-dropdown[open] .qa-summary::after {
+  transform: rotate(180deg);
+}
+.qa-summary:focus,
+.qa-summary:focus-visible {
+  outline: 3px solid rgba(13, 110, 253, 0.35); /* bootstrap primary-ish */
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+.qa-content {
+  padding: 0 16px 14px 16px;
+  color: #4b5563; /* gray-600 */
+}
+@media (prefers-reduced-motion: reduce) {
+  .qa-summary::after {
+    transition: none;
+  }
 }

@@ -20,9 +20,18 @@ export default function Save({ user }) {
   const [managingId, setManagingId] = useState(null);
 
   const removeJob = (jobId) => {
+    const job = saved.find((j) => j.id === jobId);
+    const label = job?.title || "this item";
+    const ok = window.confirm(
+      `Are you sure you want to delete "${label}" from your saved items? This action cannot be undone.`,
+    );
+    if (!ok) return;
+
     const updated = saved.filter((j) => j.id !== jobId);
     setSaved(updated);
-    localStorage.setItem("savedJobs", JSON.stringify(updated));
+    try {
+      localStorage.setItem("savedJobs", JSON.stringify(updated));
+    } catch {}
     setSelectedJob(null);
   };
 
@@ -31,6 +40,13 @@ export default function Save({ user }) {
   };
 
   const handleDelete = (id) => {
+    const job = saved.find((j) => j.id === id);
+    const label = job?.title || "this item";
+    const ok = window.confirm(
+      `Are you sure you want to delete "${label}" from your saved items? This action cannot be undone.`,
+    );
+    if (!ok) return;
+
     const next = saved.filter((j) => j.id !== id);
     setSaved(next);
     try {
@@ -155,9 +171,6 @@ export default function Save({ user }) {
               </div>
 
               <div className="modal-footer border-0">
-                <button className="btn btn-danger" onClick={() => removeJob(selectedJob.id)}>
-                  Remove
-                </button>
                 <button className="btn btn-secondary" onClick={() => setSelectedJob(null)}>
                   Close
                 </button>
