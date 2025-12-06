@@ -27,7 +27,7 @@ This project is structured as a single app inside `loginpage/` that contains bot
 
 ```
 MONGODB_URI=mongodb://127.0.0.1:27017/loginpage
-PORT=5000
+PORT=5002
 LOG_FILE=server/data/events.log
 # Optional HTTPS (provide absolute or repo-relative paths)
 SSL_CERT_PATH=certs/localhost.crt
@@ -45,7 +45,7 @@ GEMINI_API_KEY=your_google_generative_ai_key
 3. Run the app (backend + frontend together)
 
 - npm run dev
-- Backend API: http://127.0.0.1:5000
+- Backend API: http://127.0.0.1:5002
 - Frontend (Vite): http://localhost:5174 (will auto-pick next free port if busy)
 
 4. Run pieces separately (optional)

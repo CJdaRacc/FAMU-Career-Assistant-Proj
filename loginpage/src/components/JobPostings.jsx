@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // Job Postings page styled to look like src/jobposting.html (minus spelling mistakes),
 // while keeping dynamic data, Save, and Apply behaviors.
@@ -6,12 +6,25 @@ export default function JobPostings({ user }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Debounce timer for lazy external fetch (to avoid consuming tokens on every quick change)
+  const FETCH_DELAY_MS = 2000; // 2 seconds
+  const debounceRef = useRef(null);
 
-  // sidebar filter state
-  const [role, setRole] = useState("");
-  const [company, setCompany] = useState("");
-  const [location, setLocation] = useState(""); // not available from API yet
+  // sidebar filter state (updated)
+  // Keep: Work type (placeholder for now)
   const [worktype, setWorktype] = useState(""); // not available from API yet
+  // New: Time Posted (days) and Custom filters dropdown
+  const [timeDays, setTimeDays] = useState(7);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [easyApplyOnly, setEasyApplyOnly] = useState(false);
+  const [statuses, setStatuses] = useState(() => new Set()); // employment_statuses_or
+  const [props, setProps] = useState(() => new Set()); // property_exists_or
+  // Toggle for blurred preview mode (TheirStack free preview). Default ON.
+  const [blurPreview, setBlurPreview] = useState(true);
+  // General extra filters (no location field available)
+  const [keywords, setKeywords] = useState(""); // maps to job_title_or (comma-separated)
+  // Removed Minimum Salary filter per request
 
   const [openMore, setOpenMore] = useState(() => new Set()); // open/closed more-info per job id
 
@@ -135,13 +148,25 @@ export default function JobPostings({ user }) {
     try {
       setLoading(true);
       setError("");
-      const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
       let url;
       if (useExternal) {
+        // Call our TheirStack proxy again (no limit:1). Build query from current filters
         const q = new URLSearchParams();
         if (userId) q.set("userId", userId);
         q.set("country", "US");
-        q.set("days", "7");
+        q.set("days", String(timeDays || 7));
+        q.set("blur", blurPreview ? "true" : "false");
+        const kw = (keywords || "").trim().split(/\s*,\s*/).filter(Boolean).join(",");
+        if (kw) q.set("keywords", kw);
+        if (remoteOnly) q.set("remote", "true");
+        if (easyApplyOnly) q.set("easy_apply", "true");
+        // statuses is a Set; convert to CSV if any selected
+        const statusesArr = Array.from(statuses || []);
+        if (statusesArr.length) q.set("statuses", statusesArr.join(","));
+        // props is a Set of property_exists_or values; convert to CSV if any selected
+        const propList = Array.from(props || []);
+        if (propList.length) q.set("props", propList.join(","));
         url = `${base}/api/theirstack/jobs/search?${q.toString()}`;
       } else {
         const params = userId ? `?userId=${encodeURIComponent(userId)}` : "";
@@ -160,14 +185,24 @@ export default function JobPostings({ user }) {
   };
 
   useEffect(() => {
+    // Clear any pending debounce when dependencies change
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+
     const run = async () => {
       if (useExternal) {
-        // No local seeding when using external API
-        fetchItems();
+        // Lazy/debounced fetch to avoid burning tokens while the user is adjusting filters
+        setLoading(true);
+        debounceRef.current = setTimeout(() => {
+          fetchItems();
+          debounceRef.current = null;
+        }, FETCH_DELAY_MS);
       } else {
-        // Seed sample postings if the database is empty.
+        // Local mode: seed immediately (does not consume external tokens) and fetch
         try {
-          const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+          const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
           await fetch(`${base}/api/job-postings`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -180,7 +215,24 @@ export default function JobPostings({ user }) {
       }
     };
     run();
-  }, [userId, useExternal]);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+    };
+  }, [
+    userId,
+    useExternal,
+    timeDays,
+    remoteOnly,
+    easyApplyOnly,
+    statuses,
+    props,
+    blurPreview,
+    keywords,
+  ]);
 
   // infer a coarse "role" from title
   function inferRole(title) {
@@ -194,6 +246,7 @@ export default function JobPostings({ user }) {
     return "software"; // default bucket
   }
 
+  // Placeholder: companies list no longer shown in filters, but keep for potential future use
   const companies = useMemo(() => {
     const set = new Set(items.map((i) => i.company).filter(Boolean));
     return Array.from(set).sort();
@@ -234,7 +287,7 @@ export default function JobPostings({ user }) {
 
   const handleApply = async (id) => {
     try {
-      const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
       const resp = await fetch(`${base}/api/job-postings/${id}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -250,18 +303,20 @@ export default function JobPostings({ user }) {
   // Apply filters and sorting (match desc then newest)
   const filteredSorted = useMemo(() => {
     let list = [...items];
-    if (role) list = list.filter((j) => inferRole(j.title) === role);
-    if (company) list = list.filter((j) => j.company === company);
+    const anyScore = list.some((j) => typeof j.matchPercent === "number" && j.matchPercent > 0);
     // location/worktype are placeholders until backend provides fields
-    if (location) list = list.filter(() => false); // no matches if a specific location chosen
     if (worktype) list = list.filter(() => false);
 
     return list.sort((a, b) => {
-      const ms = (b.matchPercent || 0) - (a.matchPercent || 0);
-      if (ms !== 0) return ms;
+      if (anyScore) {
+        const ms = (b.matchPercent || 0) - (a.matchPercent || 0);
+        if (ms !== 0) return ms;
+      }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [items, role, company, location, worktype]);
+  }, [items, worktype]);
+
+  // Display all positions (remove previous Top 3 limitation)
 
   const goBack = () => (window.location.hash = "#/dashboard");
   const goSave = () => (window.location.hash = "#/save");
@@ -301,63 +356,61 @@ export default function JobPostings({ user }) {
         <aside style={styles.sidebar}>
           <h2 style={styles.sidebarH2}>Filter Jobs</h2>
 
+          {/* Preview mode toggle (blur company/job identifiers) */}
           <div style={styles.filterGroup}>
-            <label htmlFor="role" style={styles.label}>
-              Role
+            <div className="form-check form-switch">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="blurPreview"
+                checked={blurPreview}
+                onChange={(e) => setBlurPreview(e.target.checked)}
+              />
+              <label className="form-check-label" htmlFor="blurPreview">
+                Preview mode (blur company data)
+              </label>
+            </div>
+            <small className="text-muted">When enabled, data is blurred and doesn’t consume credits.</small>
+          </div>
+
+          {/* Time Posted */}
+          <div style={styles.filterGroup}>
+            <label htmlFor="timePosted" style={styles.label}>
+              Time Posted
             </label>
             <select
-              id="role"
+              id="timePosted"
               style={styles.select}
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+              value={String(timeDays)}
+              onChange={(e) => setTimeDays(parseInt(e.target.value, 10) || 7)}
             >
-              <option value="">All</option>
-              <option value="software">Software Development</option>
-              <option value="data">Data Science</option>
-              <option value="cyber">Cybersecurity</option>
-              <option value="web">Web Development</option>
-              <option value="ai">AI / Research</option>
+              <option value="1">Past 24 hours</option>
+              <option value="3">Past 3 days</option>
+              <option value="7">Past week</option>
+              <option value="14">Past 2 weeks</option>
+              <option value="30">Past month</option>
             </select>
           </div>
 
+          {/* Percent Match slider removed per request */}
+
+          {/* General: Keywords (Title contains) */}
           <div style={styles.filterGroup}>
-            <label htmlFor="company" style={styles.label}>
-              Company
+            <label htmlFor="keywords" style={styles.label}>
+              Keywords (title contains)
             </label>
-            <select
-              id="company"
-              style={styles.select}
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-            >
-              <option value="">All</option>
-              {companies.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <input
+              id="keywords"
+              type="text"
+              className="form-control"
+              placeholder="e.g. intern, python, analyst"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+            />
+            <small className="text-muted">Comma-separated. Matches any of the words.</small>
           </div>
 
-          <div style={styles.filterGroup}>
-            <label htmlFor="location" style={styles.label}>
-              Location
-            </label>
-            <select
-              id="location"
-              style={styles.select}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            >
-              <option value="">All</option>
-              {/* Placeholder options to match the HTML mock */}
-              <option value="mountain-view">Mountain View, CA</option>
-              <option value="redmond">Redmond, WA</option>
-              <option value="seattle">Seattle, WA</option>
-              <option value="armonk">Armonk, NY</option>
-              <option value="menlo-park">Menlo Park, CA</option>
-            </select>
-          </div>
+          {/* Minimum Salary filter removed per request */}
 
           <div style={styles.filterGroup}>
             <label htmlFor="worktype" style={styles.label}>
@@ -376,11 +429,104 @@ export default function JobPostings({ user }) {
             </select>
           </div>
 
+          {/* Custom filters (dropdown with checkboxes) */}
+          <div style={styles.filterGroup}>
+            <button
+              type="button"
+              className="btn btn-outline-secondary w-100"
+              onClick={() => setCustomOpen((v) => !v)}
+              aria-expanded={customOpen}
+            >
+              Custom Filters ▾
+            </button>
+            {customOpen && (
+              <div className="border rounded p-2 mt-2 bg-white" style={{ maxHeight: 240, overflowY: "auto" }}>
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="remoteOnly"
+                    checked={remoteOnly}
+                    onChange={(e) => setRemoteOnly(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="remoteOnly">Remote only</label>
+                </div>
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="easyApplyOnly"
+                    checked={easyApplyOnly}
+                    onChange={(e) => setEasyApplyOnly(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="easyApplyOnly">Easy apply only</label>
+                </div>
+
+                <hr className="my-2" />
+                <div className="mb-1 fw-semibold" style={{ fontSize: 13 }}>Employment Status</div>
+                {[
+                  ["full_time", "Full-time"],
+                  ["part_time", "Part-time"],
+                  ["temporary", "Temporary"],
+                  ["internship", "Internship"],
+                  ["contract", "Contract"],
+                ].map(([val, label]) => (
+                  <div className="form-check" key={val}>
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id={`status-${val}`}
+                      checked={statuses.has(val)}
+                      onChange={(e) =>
+                        setStatuses((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(val);
+                          else next.delete(val);
+                          return next;
+                        })
+                      }
+                    />
+                    <label className="form-check-label" htmlFor={`status-${val}`}>{label}</label>
+                  </div>
+                ))}
+
+                <hr className="my-2" />
+                <div className="mb-1 fw-semibold" style={{ fontSize: 13 }}>Has Property</div>
+                {[
+                  ["final_url", "Final URL"],
+                  ["company_object.domain", "Company Domain"],
+                  ["company_object.linkedin_url", "Company LinkedIn"],
+                  ["hiring_team", "Hiring Team"],
+                  ["employment_statuses", "Employment Statuses"],
+                ].map(([val, label]) => (
+                  <div className="form-check" key={val}>
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id={`prop-${val}`}
+                      checked={props.has(val)}
+                      onChange={(e) =>
+                        setProps((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(val);
+                          else next.delete(val);
+                          return next;
+                        })
+                      }
+                    />
+                    <label className="form-check-label" htmlFor={`prop-${val}`}>{label}</label>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             style={styles.filterBtn}
             onClick={() => {
-              // no-op: filters apply immediately via state
+              // Apply by re-fetching when using external API; otherwise client filters only
+              fetchItems();
             }}
             title="Filters apply instantly"
           >
@@ -390,6 +536,16 @@ export default function JobPostings({ user }) {
 
         {/* Listings */}
         <section style={styles.listings}>
+          {/* Jobs found indicator + lazy-fetch hint */}
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <div className="text-muted">
+              {loading ? "Searching…" : `${filteredSorted.length} jobs found`}
+            </div>
+            {useExternal && loading && (
+              <small className="text-muted">Waiting 2s before fetching…</small>
+            )}
+          </div>
+
           {loading && <div className="text-muted">Loading…</div>}
           {error && <div className="alert alert-warning py-2">Failed to load: {error}</div>}
 

@@ -1,0 +1,26 @@
+# Exported from Render on 2025-12-06T02:47:29Z
+version: "1"
+projects:
+  - name: My project
+    environments:
+      - name: Production
+        services:
+          - type: web
+            name: FAMU-Career-Assistant-Proj
+            runtime: node
+            repo: https://github.com/CJdaRacc/FAMU-Career-Assistant-Proj
+            plan: free
+            envVars:
+              - key: PORT
+                sync: false
+              - key: MONGODB_URI
+                sync: false
+              - key: GEMINI_API_KEY
+                sync: false
+              - key: THEIRSTACK_API_TOKEN
+                sync: false
+            region: frankfurt
+            buildCommand: npm ci && npm run build
+            startCommand: npm run start
+            autoDeployTrigger: commit
+            rootDir: loginpage

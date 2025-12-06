@@ -39,8 +39,13 @@ function getTheirStackToken() {
   );
 }
 
+// Helper to resolve SerpApi API key (for Google Jobs engine)
+function getSerpApiKey() {
+  return process.env.SERPAPI_API_KEY || "";
+}
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
 // Local file logging setup
@@ -204,108 +209,197 @@ app.get("/api/health/config", (req, res) => {
     status: "ok",
     geminiConfigured,
     theirstackConfigured,
-    port: process.env.PORT || 5000,
+    port: process.env.PORT || 5002,
     logFile:
       process.env.LOG_FILE ||
-      require("path").resolve(process.cwd(), "server", "data", "events.log"),
+      path.resolve(process.cwd(), "server", "data", "events.log"),
   });
 });
 
-// TheirStack Job Search proxy
-// POST /api/theirstack/jobs/search { page, limit, job_country_code_or, posted_at_max_age_days }
-app.post("/api/theirstack/jobs/search", wrapAsync(async (req, res) => {
-  const token = getTheirStackToken();
-  if (!token) {
-    appendEvent({ type: "theirstack_missing_token" });
-    return res.status(501).json({ message: "TheirStack token not configured" });
-  }
-  const { page = 0, limit = 25, job_country_code_or = ["US"], posted_at_max_age_days = 7, userId } = req.body || {};
-  const url = "https://api.theirstack.com/v1/jobs/search";
-  const payload = { page, limit, job_country_code_or, posted_at_max_age_days };
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  let data = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    appendEvent({ type: "theirstack_search_error", status: resp.status, body: data });
-    return res.status(resp.status).json({ message: "TheirStack API error", body: data });
-  }
-  // Normalize results to our UI shape when possible
-  const rawItems = Array.isArray(data?.results || data?.items) ? (data.results || data.items) : [];
-  const items = rawItems.map((it, idx) => {
-    const id = String(it.id ?? it.job_id ?? it.uuid ?? `${Date.now()}_${idx}`);
-    const title = String(it.title || it.job_title || "").trim();
-    const company = String(it.company || it.company_name || it.employer || "").trim();
-    const createdAt = it.posted_at || it.postedAt || it.created_at || new Date().toISOString();
-    const applyUrl = it.apply_url || it.url || it.job_url || null;
-    return { id, title, company, createdAt, applyUrl, appliedAt: null };
-  }).filter((j) => j.title && j.company);
-
-  // Attach match scores if userId provided
-  let withScores = items;
-  try {
-    if (userId) {
-      withScores = await attachMatchPercent(userId, items);
-    }
-  } catch (e) {
-    // non-fatal
-  }
-
-  appendEvent({ type: "theirstack_search_ok", count: withScores.length });
-  return res.json({ items: withScores, raw: data });
-}));
-
-// Convenience GET that performs the same fetch as POST with query params
+// TheirStack Job Search proxy (RE-ENABLED)
+// GET /api/theirstack/jobs/search?country=US&days=7&userId=...&blur=true&keywords=intern,python&remote=true&easy_apply=true&statuses=full_time,internship&props=final_url,company_object.domain
 app.get("/api/theirstack/jobs/search", wrapAsync(async (req, res) => {
   const token = getTheirStackToken();
   if (!token) {
     appendEvent({ type: "theirstack_missing_token" });
     return res.status(501).json({ message: "TheirStack token not configured" });
   }
-  const page = Number(req.query.page ?? 0) || 0;
-  const limit = Math.min(50, Number(req.query.limit ?? 25) || 25);
-  const country = req.query.country || "US";
+
+  // Map query → TheirStack payload
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  const country = (req.query.country || "US").toString();
   const days = Number(req.query.days ?? 7) || 7;
-  const userId = req.query.userId || undefined;
-  const url = "https://api.theirstack.com/v1/jobs/search";
-  const payload = { page, limit, job_country_code_or: [country], posted_at_max_age_days: days };
-  const resp = await fetch(url, {
+  const blur = String(req.query.blur ?? "true").toLowerCase() !== "false";
+  const keywordsCsv = typeof req.query.keywords === "string" ? req.query.keywords : undefined;
+  const remote = typeof req.query.remote !== "undefined" ? String(req.query.remote).toLowerCase() === "true" : undefined;
+  const easyApply = typeof req.query.easy_apply !== "undefined" ? String(req.query.easy_apply).toLowerCase() === "true" : undefined;
+  const statusesCsv = typeof req.query.statuses === "string" ? req.query.statuses : undefined;
+  const propsCsv = typeof req.query.props === "string" ? req.query.props : undefined;
+  const limit = Math.max(1, Math.min(100, Number(req.query.limit || 25) || 25)); // default 25, NEVER force 1
+  const page = Math.max(0, Number(req.query.page || 0) || 0);
+
+  const payload = {
+    page,
+    limit, // intentionally not 1
+    job_country_code_or: country ? [country] : [],
+    posted_at_max_age_days: days,
+    blur_company_data: blur,
+  };
+
+  if (keywordsCsv) {
+    const arr = keywordsCsv.split(/\s*,\s*/).filter(Boolean);
+    if (arr.length) payload.job_title_or = arr;
+  }
+  if (typeof remote === "boolean") payload.remote = remote;
+  if (typeof easyApply === "boolean") payload.easy_apply = easyApply;
+  if (statusesCsv) {
+    const arr = statusesCsv.split(/\s*,\s*/).filter(Boolean);
+    if (arr.length) payload.employment_statuses_or = arr;
+  }
+  if (propsCsv) {
+    const arr = propsCsv.split(/\s*,\s*/).filter(Boolean);
+    if (arr.length) payload.property_exists_or = arr;
+  }
+
+  const r = await fetch("https://api.theirstack.com/v1/jobs/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(payload),
   });
-  let data = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    appendEvent({ type: "theirstack_search_error", status: resp.status, body: data });
-    return res.status(resp.status).json({ message: "TheirStack API error", body: data });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    appendEvent({ type: "theirstack_error", status: r.status, body });
+    return res.status(r.status).json(body);
   }
-  const rawItems = Array.isArray(data?.results || data?.items) ? (data.results || data.items) : [];
-  const items = rawItems.map((it, idx) => {
-    const id = String(it.id ?? it.job_id ?? it.uuid ?? `${Date.now()}_${idx}`);
-    const title = String(it.title || it.job_title || "").trim();
-    const company = String(it.company || it.company_name || it.employer || "").trim();
-    const createdAt = it.posted_at || it.postedAt || it.created_at || new Date().toISOString();
-    const applyUrl = it.apply_url || it.url || it.job_url || null;
-    return { id, title, company, createdAt, applyUrl, appliedAt: null };
-  }).filter((j) => j.title && j.company);
+
+  const rawItems = Array.isArray(body?.items) ? body.items : Array.isArray(body?.jobs) ? body.jobs : [];
+  const items = rawItems
+    .map((it, idx) => {
+      const id = String(it.id || it.job_id || idx);
+      const title = String(it.job_title || it.title || "").trim();
+      const company = String(it.company || it.company_object?.name || it.company_object?.domain || "").trim();
+      const createdAt = it.date_posted || it.discovered_at || new Date().toISOString();
+      const applyUrl = it.final_url || it.url || it.source_url || null;
+      return { id, title, company, createdAt, applyUrl, appliedAt: null };
+    })
+    .filter((j) => j.title && j.company);
+
+  let withScores = items;
+  try { if (userId) withScores = await attachMatchPercent(userId, items); } catch {}
+
+  const anyScore = withScores.some((j) => typeof j.matchPercent === "number" && j.matchPercent > 0);
+  const sorted = [...withScores].sort((a, b) => {
+    if (anyScore) {
+      const ms = (b.matchPercent || 0) - (a.matchPercent || 0);
+      if (ms !== 0) return ms;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  appendEvent({ type: "theirstack_ok", count: sorted.length });
+  return res.json({ items: sorted, raw: body });
+}));
+
+// POST passthrough (optional): mirror GET behavior, accept JSON body with same fields
+app.post("/api/theirstack/jobs/search", wrapAsync(async (req, res) => {
+  // For simplicity, redirect POST to GET-style handler by translating body → query-compatible fields
+  const q = new URLSearchParams();
+  const b = (req.body && typeof req.body === "object") ? req.body : {};
+  if (b.userId) q.set("userId", String(b.userId));
+  if (b.country) q.set("country", String(b.country));
+  if (b.days != null) q.set("days", String(b.days));
+  if (b.blur != null) q.set("blur", String(b.blur));
+  if (Array.isArray(b.job_title_or)) q.set("keywords", b.job_title_or.join(","));
+  if (typeof b.remote === "boolean") q.set("remote", String(b.remote));
+  if (typeof b.easy_apply === "boolean") q.set("easy_apply", String(b.easy_apply));
+  if (Array.isArray(b.employment_statuses_or)) q.set("statuses", b.employment_statuses_or.join(","));
+  if (Array.isArray(b.property_exists_or)) q.set("props", b.property_exists_or.join(","));
+  if (b.limit != null) q.set("limit", String(b.limit));
+  if (b.page != null) q.set("page", String(b.page));
+  req.query = Object.fromEntries(q.entries());
+  return app._router.handle(req, res, () => {});
+}));
+
+// New: SerpApi Google Jobs proxy
+// GET /api/serpapi/jobs?q=software+engineer&gl=us&hl=en&location=City
+app.get("/api/serpapi/jobs", wrapAsync(async (req, res) => {
+  const API_KEY = getSerpApiKey();
+  if (!API_KEY) {
+    appendEvent({ type: "serpapi_missing_key" });
+    return res.status(501).json({ message: "SerpApi key not configured" });
+  }
+
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  const q = (req.query.q || req.query.keywords || "software intern").toString();
+  const location = typeof req.query.location === "string" ? req.query.location : undefined;
+  const google_domain = typeof req.query.google_domain === "string" ? req.query.google_domain : undefined;
+  const gl = (req.query.gl || req.query.country || "us").toString();
+  const hl = (req.query.hl || "en").toString();
+  const next_page_token = typeof req.query.next_page_token === "string" ? req.query.next_page_token : undefined;
+  const no_cache = typeof req.query.no_cache !== "undefined" ? String(req.query.no_cache) : undefined;
+  const asyncFlag = typeof req.query.async !== "undefined" ? String(req.query.async) : undefined;
+  const output = typeof req.query.output === "string" ? req.query.output : undefined;
+  const json_restrictor = typeof req.query.json_restrictor === "string" ? req.query.json_restrictor : undefined;
+
+  const params = new URLSearchParams();
+  params.set("engine", "google_jobs");
+  params.set("q", q);
+  if (location) params.set("location", location);
+  if (google_domain) params.set("google_domain", google_domain);
+  if (gl) params.set("gl", gl);
+  if (hl) params.set("hl", hl);
+  if (next_page_token) params.set("next_page_token", next_page_token);
+  if (no_cache !== undefined) params.set("no_cache", no_cache);
+  if (asyncFlag !== undefined) params.set("async", asyncFlag);
+  if (output) params.set("output", output);
+  if (json_restrictor) params.set("json_restrictor", json_restrictor);
+  params.set("api_key", API_KEY);
+
+  const url = `https://serpapi.com/search.json?${params.toString()}`;
+  const r = await fetch(url);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    appendEvent({ type: "serpapi_error", status: r.status, body });
+    return res.status(r.status).json(body);
+  }
+
+  const rawItems = Array.isArray(body?.jobs_results) ? body.jobs_results : [];
+  const items = rawItems
+    .map((it, idx) => {
+      const id = String(it.job_id || it.job_id_jrt || it.job_id_oid || it.position || it.link || idx);
+      const title = String(it.title || "").trim();
+      const company = String(it.company_name || it.source || "").trim();
+      // Attempt to derive createdAt from detected_extensions or published_at
+      const ext = it.detected_extensions || {};
+      const postedAt = ext.posted_at || ext.posted_at_text || it.published_at || it.created_at;
+      const createdAt = postedAt || new Date().toISOString();
+      const applyUrl = Array.isArray(it.apply_options) && it.apply_options.length
+        ? (it.apply_options[0].link || it.apply_options[0].apply_link || null)
+        : (it.google_jobs_url || it.link || null);
+      return { id, title, company, createdAt, applyUrl, appliedAt: null };
+    })
+    .filter((j) => j.title && j.company);
 
   let withScores = items;
   try {
-    if (userId) {
-      withScores = await attachMatchPercent(userId, items);
-    }
-  } catch (e) {}
+    if (userId) withScores = await attachMatchPercent(userId, items);
+  } catch {}
 
-  appendEvent({ type: "theirstack_search_ok", count: withScores.length });
-  return res.json({ items: withScores, raw: data });
+  const anyScore = withScores.some((j) => typeof j.matchPercent === "number" && j.matchPercent > 0);
+  const sorted = [...withScores].sort((a, b) => {
+    if (anyScore) {
+      const ms = (b.matchPercent || 0) - (a.matchPercent || 0);
+      if (ms !== 0) return ms;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  appendEvent({ type: "serpapi_ok", count: sorted.length });
+  return res.json({ items: sorted, raw: body });
 }));
 
 // Register endpoint
@@ -1084,12 +1178,22 @@ app.get("/api/job-postings", async (req, res) => {
     });
 
     const withScores = await attachMatchPercent(userId, base);
+    // Auto-sort: by matchPercent desc when any scores exist, otherwise by newest
+    const anyScore = withScores.some((j) => typeof j.matchPercent === "number" && j.matchPercent > 0);
+    const sorted = [...withScores].sort((a, b) => {
+      if (anyScore) {
+        const ms = (b.matchPercent || 0) - (a.matchPercent || 0);
+        if (ms !== 0) return ms;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     appendEvent({
       type: "job_postings_list",
-      count: withScores.length,
+      count: sorted.length,
       userId: userId ? String(userId) : undefined,
     });
-    return res.json({ items: withScores });
+    return res.json({ items: sorted });
   } catch (err) {
     console.error("Job postings list error:", err);
     appendEvent({ type: "job_postings_list_error", error: err?.message });
@@ -1487,37 +1591,40 @@ function afterStart(protocol) {
   console.log(`Server listening on ${base}`);
   console.log(`Logging events to: ${LOG_FILE}`);
   console.log(`Gemini API key configured: ${getGeminiApiKey() ? "yes" : "no"}`);
+  // TheirStack status and quick connectivity probe (non-blocking)
   const theirToken = getTheirStackToken();
   console.log(`TheirStack token configured: ${theirToken ? "yes" : "no"}`);
-  // Quick connectivity probe (non-blocking) to TheirStack when token is present
   if (theirToken) {
     try {
-      const url = "https://api.theirstack.com/v1/jobs/search";
-      const payload = {
+      const probeBody = {
         page: 0,
-        limit: 1,
+        limit: 5, // not 1
         job_country_code_or: ["US"],
-        posted_at_max_age_days: 1,
+        posted_at_max_age_days: 7,
+        blur_company_data: true,
       };
-      fetch(url, {
+      fetch("https://api.theirstack.com/v1/jobs/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
           Authorization: `Bearer ${theirToken}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(probeBody),
       })
         .then((r) => {
           const msg = r.ok ? "ok" : `failed (HTTP ${r.status})`;
           console.log(`TheirStack connectivity: ${msg}`);
         })
-        .catch((e) => {
-          console.log(`TheirStack connectivity: failed (${e?.message || e})`);
-        });
+        .catch((e) => console.log(`TheirStack connectivity: failed (${e?.message || e})`));
     } catch (e) {
       console.log(`TheirStack connectivity: failed (${e?.message || e})`);
     }
   }
+
+  // SerpApi status (optional) to keep the endpoint available for alternates
+  const serpKey = getSerpApiKey();
+  console.log(`SerpApi key configured: ${serpKey ? "yes" : "no"}`);
 }
 
 if (SSL_CERT_PATH && SSL_KEY_PATH && fs.existsSync(SSL_CERT_PATH) && fs.existsSync(SSL_KEY_PATH)) {

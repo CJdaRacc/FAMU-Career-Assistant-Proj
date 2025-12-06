@@ -19,7 +19,7 @@ export default function JobMatcher({ onMatch }) {
     e.preventDefault();
 
     // Here we simulate matching — in real use, you’d call your backend
-    const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+    const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
     const resp = await fetch(`${base}/api/job-postings`);
     const data = await resp.json();
 

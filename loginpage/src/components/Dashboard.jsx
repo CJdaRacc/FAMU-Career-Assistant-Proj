@@ -153,7 +153,7 @@ function JobRecommendations({ user }) {
       try {
         setLoading(true);
         setError("");
-        const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+        const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
         const resp = await fetch(`${base}/api/jobs/my?userId=${encodeURIComponent(user.userId)}`);
         const data = await resp.json();
         if (!mounted) return;

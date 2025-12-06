@@ -17,7 +17,7 @@ This README explains how to set up the environment, run the app, and use all fea
 - loginpage/ — frontend and backend code (monorepo style)
   - src/ — React app
   - server/ — Express API
-  - vite.config.ts — proxies /api to the backend on http://127.0.0.1:5000 during dev
+  - vite.config.ts — proxies /api to the backend on http://127.0.0.1:5002 during dev
   - .env — environment configuration (see below)
 
 ## 1) Install dependencies
@@ -30,8 +30,8 @@ This README explains how to set up the environment, run the app, and use all fea
 Create a file at loginpage/.env with the following settings.
 
 ```
-# Backend server port (Vite proxies /api to this). Default is 5000
-PORT=5000
+# Backend server port (Vite proxies /api to this). Default is 5002
+PORT=5002
 
 # MongoDB connection string. Use your local MongoDB or Atlas URI
 # Example (local): mongodb://127.0.0.1:27017/famu_career
@@ -59,7 +59,7 @@ From the loginpage directory, start both the backend and the Vite dev server con
 - npm run dev
 
 What happens:
-- Express backend starts on http://127.0.0.1:5000 (or your PORT)
+- Express backend starts on http://127.0.0.1:5002 (or your PORT)
 - Vite dev server starts (base http://localhost:5174; if busy it will auto-pick the next free port) and proxies requests starting with /api to the backend (see vite.config.ts)
 
 Open the printed Vite URL in your browser (usually http://localhost:5174).
@@ -117,7 +117,7 @@ Notes:
 - Gemini API key is required when using the AI-based analysis path; otherwise, the server falls back to a heuristic keyword extraction method.
 
 ## 5) API quick tests (optional)
-Run these from a terminal in the loginpage directory while Vite is running (proxy to 127.0.0.1:5000):
+Run these from a terminal in the loginpage directory while Vite is running (proxy to 127.0.0.1:5002):
 
 Health checks:
 ```
@@ -201,7 +201,7 @@ curl -X POST http://localhost:5174/api/resume/feedback \
   }'
 ```
 
-If you prefer to hit the backend directly (bypassing Vite), use http://127.0.0.1:5000 instead of http://localhost:5174 and run the server with:
+If you prefer to hit the backend directly (bypassing Vite), use http://127.0.0.1:5002 instead of http://localhost:5174 and run the server with:
 - npm run server
 
 ## 6) IntelliJ IDEA Run/Debug configuration (optional)
@@ -222,9 +222,9 @@ If you prefer to hit the backend directly (bypassing Vite), use http://127.0.0.1
 - Missing Gemini API key
   - Advanced generation and job matches require GEMINI_API_KEY or GOOGLE_API_KEY. Without it, related endpoints return a configuration error.
 - Port issues
-  - Backend default is 5000 (configurable via PORT). Vite default is 5174 (will auto-pick a new port if busy).
+  - Backend default is 5002 (configurable via PORT). Vite default is 5174 (will auto-pick a new port if busy).
   - If you change PORT, update the proxy target in loginpage/vite.config.ts.
   - Where are logs?
   - The server appends JSON lines to server/data/events.log by default (configurable via LOG_FILE). Create directories if needed.
 - Checking server health
-  - Visit http://localhost:5174/api/health (via Vite proxy) or http://127.0.0.1:5000/api/health (direct) to verify the API is up.
+  - Visit http://localhost:5174/api/health (via Vite proxy) or http://127.0.0.1:5002/api/health (direct) to verify the API is up.
