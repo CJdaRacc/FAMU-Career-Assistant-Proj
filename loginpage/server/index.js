@@ -30,6 +30,15 @@ function getGeminiApiKey() {
   );
 }
 
+// Helper to resolve TheirStack API token
+function getTheirStackToken() {
+  return (
+    process.env.THEIRSTACK_API_TOKEN ||
+    process.env.VITE_THEIRSTACK_API_TOKEN ||
+    ""
+  );
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || "";
@@ -190,15 +199,114 @@ app.get("/api/health", (req, res) => {
 // Config health (does not expose secrets)
 app.get("/api/health/config", (req, res) => {
   const geminiConfigured = Boolean(getGeminiApiKey());
+  const theirstackConfigured = Boolean(getTheirStackToken());
   res.json({
     status: "ok",
     geminiConfigured,
+    theirstackConfigured,
     port: process.env.PORT || 5000,
     logFile:
       process.env.LOG_FILE ||
       require("path").resolve(process.cwd(), "server", "data", "events.log"),
   });
 });
+
+// TheirStack Job Search proxy
+// POST /api/theirstack/jobs/search { page, limit, job_country_code_or, posted_at_max_age_days }
+app.post("/api/theirstack/jobs/search", wrapAsync(async (req, res) => {
+  const token = getTheirStackToken();
+  if (!token) {
+    appendEvent({ type: "theirstack_missing_token" });
+    return res.status(501).json({ message: "TheirStack token not configured" });
+  }
+  const { page = 0, limit = 25, job_country_code_or = ["US"], posted_at_max_age_days = 7, userId } = req.body || {};
+  const url = "https://api.theirstack.com/v1/jobs/search";
+  const payload = { page, limit, job_country_code_or, posted_at_max_age_days };
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  let data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    appendEvent({ type: "theirstack_search_error", status: resp.status, body: data });
+    return res.status(resp.status).json({ message: "TheirStack API error", body: data });
+  }
+  // Normalize results to our UI shape when possible
+  const rawItems = Array.isArray(data?.results || data?.items) ? (data.results || data.items) : [];
+  const items = rawItems.map((it, idx) => {
+    const id = String(it.id ?? it.job_id ?? it.uuid ?? `${Date.now()}_${idx}`);
+    const title = String(it.title || it.job_title || "").trim();
+    const company = String(it.company || it.company_name || it.employer || "").trim();
+    const createdAt = it.posted_at || it.postedAt || it.created_at || new Date().toISOString();
+    const applyUrl = it.apply_url || it.url || it.job_url || null;
+    return { id, title, company, createdAt, applyUrl, appliedAt: null };
+  }).filter((j) => j.title && j.company);
+
+  // Attach match scores if userId provided
+  let withScores = items;
+  try {
+    if (userId) {
+      withScores = await attachMatchPercent(userId, items);
+    }
+  } catch (e) {
+    // non-fatal
+  }
+
+  appendEvent({ type: "theirstack_search_ok", count: withScores.length });
+  return res.json({ items: withScores, raw: data });
+}));
+
+// Convenience GET that performs the same fetch as POST with query params
+app.get("/api/theirstack/jobs/search", wrapAsync(async (req, res) => {
+  const token = getTheirStackToken();
+  if (!token) {
+    appendEvent({ type: "theirstack_missing_token" });
+    return res.status(501).json({ message: "TheirStack token not configured" });
+  }
+  const page = Number(req.query.page ?? 0) || 0;
+  const limit = Math.min(50, Number(req.query.limit ?? 25) || 25);
+  const country = req.query.country || "US";
+  const days = Number(req.query.days ?? 7) || 7;
+  const userId = req.query.userId || undefined;
+  const url = "https://api.theirstack.com/v1/jobs/search";
+  const payload = { page, limit, job_country_code_or: [country], posted_at_max_age_days: days };
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  let data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    appendEvent({ type: "theirstack_search_error", status: resp.status, body: data });
+    return res.status(resp.status).json({ message: "TheirStack API error", body: data });
+  }
+  const rawItems = Array.isArray(data?.results || data?.items) ? (data.results || data.items) : [];
+  const items = rawItems.map((it, idx) => {
+    const id = String(it.id ?? it.job_id ?? it.uuid ?? `${Date.now()}_${idx}`);
+    const title = String(it.title || it.job_title || "").trim();
+    const company = String(it.company || it.company_name || it.employer || "").trim();
+    const createdAt = it.posted_at || it.postedAt || it.created_at || new Date().toISOString();
+    const applyUrl = it.apply_url || it.url || it.job_url || null;
+    return { id, title, company, createdAt, applyUrl, appliedAt: null };
+  }).filter((j) => j.title && j.company);
+
+  let withScores = items;
+  try {
+    if (userId) {
+      withScores = await attachMatchPercent(userId, items);
+    }
+  } catch (e) {}
+
+  appendEvent({ type: "theirstack_search_ok", count: withScores.length });
+  return res.json({ items: withScores, raw: data });
+}));
 
 // Register endpoint
 app.post("/api/register", async (req, res) => {
@@ -1379,6 +1487,37 @@ function afterStart(protocol) {
   console.log(`Server listening on ${base}`);
   console.log(`Logging events to: ${LOG_FILE}`);
   console.log(`Gemini API key configured: ${getGeminiApiKey() ? "yes" : "no"}`);
+  const theirToken = getTheirStackToken();
+  console.log(`TheirStack token configured: ${theirToken ? "yes" : "no"}`);
+  // Quick connectivity probe (non-blocking) to TheirStack when token is present
+  if (theirToken) {
+    try {
+      const url = "https://api.theirstack.com/v1/jobs/search";
+      const payload = {
+        page: 0,
+        limit: 1,
+        job_country_code_or: ["US"],
+        posted_at_max_age_days: 1,
+      };
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${theirToken}`,
+        },
+        body: JSON.stringify(payload),
+      })
+        .then((r) => {
+          const msg = r.ok ? "ok" : `failed (HTTP ${r.status})`;
+          console.log(`TheirStack connectivity: ${msg}`);
+        })
+        .catch((e) => {
+          console.log(`TheirStack connectivity: failed (${e?.message || e})`);
+        });
+    } catch (e) {
+      console.log(`TheirStack connectivity: failed (${e?.message || e})`);
+    }
+  }
 }
 
 if (SSL_CERT_PATH && SSL_KEY_PATH && fs.existsSync(SSL_CERT_PATH) && fs.existsSync(SSL_KEY_PATH)) {

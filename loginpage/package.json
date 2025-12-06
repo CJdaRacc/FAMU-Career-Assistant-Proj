@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm:server\" \"vite\"",
+    "dev": "concurrently \"npm:server\" \"vite --host 127.0.0.1 --port 5174\"",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "vite preview --host 127.0.0.1 --port 5174",
     "server": "node server/index.js",
     "test": "vitest",
     "test:ci": "vitest --run",

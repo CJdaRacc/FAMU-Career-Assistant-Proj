@@ -16,6 +16,7 @@ export default function JobPostings({ user }) {
   const [openMore, setOpenMore] = useState(() => new Set()); // open/closed more-info per job id
 
   const userId = user?.userId || "";
+  const useExternal = String(import.meta.env.VITE_USE_THEIRSTACK || "").toLowerCase() === "true";
 
   function useIsNarrow(bp = 992) {
     const [w, setW] = useState(() => (typeof window !== "undefined" ? window.innerWidth : bp + 1));
@@ -135,11 +136,22 @@ export default function JobPostings({ user }) {
       setLoading(true);
       setError("");
       const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-      const params = userId ? `?userId=${encodeURIComponent(userId)}` : "";
-      const resp = await fetch(`${base}/api/job-postings${params}`);
+      let url;
+      if (useExternal) {
+        const q = new URLSearchParams();
+        if (userId) q.set("userId", userId);
+        q.set("country", "US");
+        q.set("days", "7");
+        url = `${base}/api/theirstack/jobs/search?${q.toString()}`;
+      } else {
+        const params = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+        url = `${base}/api/job-postings${params}`;
+      }
+      const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      setItems(Array.isArray(data.items) ? data.items : []);
+      const arr = Array.isArray(data.items) ? data.items : [];
+      setItems(arr);
     } catch (e) {
       setError(e?.message || "Failed to load");
     } finally {
@@ -148,26 +160,27 @@ export default function JobPostings({ user }) {
   };
 
   useEffect(() => {
-    const seedThenFetch = async () => {
-      // Seed sample postings if the database is empty.
-      // This is done first to avoid a race condition where items are fetched before seeding is complete.
-      try {
-        const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-        await fetch(`${base}/api/job-postings`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ seed: true }),
-        });
-      } catch (e) {
-        // It's okay if this fails (e.g., jobs already exist).
-        console.info("Job seeding may have been skipped if data already exists.");
+    const run = async () => {
+      if (useExternal) {
+        // No local seeding when using external API
+        fetchItems();
+      } else {
+        // Seed sample postings if the database is empty.
+        try {
+          const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+          await fetch(`${base}/api/job-postings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ seed: true }),
+          });
+        } catch (e) {
+          console.info("Job seeding may have been skipped if data already exists.");
+        }
+        fetchItems();
       }
-      // Now, fetch the items.
-      fetchItems();
     };
-
-    seedThenFetch();
-  }, [userId]);
+    run();
+  }, [userId, useExternal]);
 
   // infer a coarse "role" from title
   function inferRole(title) {
@@ -421,17 +434,29 @@ export default function JobPostings({ user }) {
                   </div>
 
                   <div className="d-flex flex-column flex-sm-row gap-2">
-                    <button
-                      style={{
-                        ...styles.applyBtn,
-                        ...(applied || !userId ? styles.applyBtnDisabled : {}),
-                      }}
-                      onClick={() => handleApply(job.id)}
-                      disabled={applied || !userId}
-                      title={!userId ? "Login required" : applied ? "Already applied" : "Apply"}
-                    >
-                      {applied ? "Applied" : "Apply Now"}
-                    </button>
+                    {job.applyUrl ? (
+                      <a
+                        href={job.applyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.applyBtn}
+                        title="Open application link in new tab"
+                      >
+                        Apply Externally
+                      </a>
+                    ) : (
+                      <button
+                        style={{
+                          ...styles.applyBtn,
+                          ...(applied || !userId ? styles.applyBtnDisabled : {}),
+                        }}
+                        onClick={() => handleApply(job.id)}
+                        disabled={applied || !userId}
+                        title={!userId ? "Login required" : applied ? "Already applied" : "Apply"}
+                      >
+                        {applied ? "Applied" : "Apply Now"}
+                      </button>
+                    )}
                     <button
                       className={`btn btn-sm ${isSaved(job.id) ? "btn-outline-secondary" : "btn-outline-dark"}`}
                       onClick={() => toggleSave(job)}
