@@ -402,6 +402,21 @@ app.get("/api/serpapi/jobs", wrapAsync(async (req, res) => {
   return res.json({ items: sorted, raw: body });
 }));
 
+// -------- Static file serving for production (Render) --------
+// Serve the Vite-built frontend from /dist when present, with SPA fallback for non-API routes
+try {
+  const DIST_DIR = path.resolve(process.cwd(), "dist");
+  if (fs.existsSync(DIST_DIR)) {
+    app.use(express.static(DIST_DIR));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api/")) return next();
+      const indexHtml = path.join(DIST_DIR, "index.html");
+      if (fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
+      return next();
+    });
+  }
+} catch (_) {}
+
 // Register endpoint
 app.post("/api/register", async (req, res) => {
   try {

@@ -19,6 +19,10 @@ projects:
                 sync: false
               - key: THEIRSTACK_API_TOKEN
                 sync: false
+              - key: SERPAPI_API_KEY
+                sync: false
+              - key: VITE_USE_THEIRSTACK
+                value: "true"
             region: frankfurt
             buildCommand: npm ci && npm run build
             startCommand: npm run start
