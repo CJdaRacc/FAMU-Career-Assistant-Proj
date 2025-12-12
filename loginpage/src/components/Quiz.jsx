@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 // General fields of study mapped to related interests
 const FIELD_INTERESTS = {
@@ -35,6 +35,8 @@ const FIELD_INTERESTS = {
   ],
   "Natural Sciences": ["Environmental Science", "Chemistry", "Physics", "Biology", "Other"],
 };
+
+const PROFILE_STORAGE_KEY = "careerAssistantProfile";
 
 export default function Quiz({ user, onDone }) {
   const years = useMemo(() => {
@@ -75,6 +77,22 @@ export default function Quiz({ user, onDone }) {
     setFieldSelections((prev) => ({ ...prev, [field]: values }));
   };
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (Array.isArray(saved.selectedFields)) setSelectedFields(saved.selectedFields);
+      if (saved.fieldSelections && typeof saved.fieldSelections === "object") {
+        setFieldSelections(saved.fieldSelections);
+      }
+      if (typeof saved.otherText === "string") setOtherText(saved.otherText);
+      if (typeof saved.classYear === "string") setClassYear(saved.classYear);
+    } catch (e) {
+      console.error("Failed to load profile from localStorage", e);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -103,6 +121,13 @@ export default function Quiz({ user, onDone }) {
             .filter(Boolean)
         : [];
     const finalInterests = Array.from(new Set([...preset, ...custom]));
+
+    const toStore = { selectedFields, fieldSelections, otherText, classYear };
+    try {
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(toStore));
+    } catch (e) {
+      console.error("Failed to save profile to localStorage", e);
+    }
 
     setSubmitting(true);
     try {
