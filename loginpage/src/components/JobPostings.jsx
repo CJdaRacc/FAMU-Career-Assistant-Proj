@@ -123,14 +123,15 @@ export default function JobPostings({ user }) {
       },
       matchPill: {
         position: "absolute",
-        top: 12,
-        left: 12,
+        bottom: 12,
+        right: 12,
         background: "#2e7d32",
         color: "white",
         borderRadius: 20,
         padding: "2px 8px",
         fontSize: 12,
         fontWeight: 700,
+        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
       },
     };
   }
