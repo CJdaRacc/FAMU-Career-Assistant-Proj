@@ -34,6 +34,8 @@ const app = express();
 // Ensure backend listens on 5002 by default (overridable via env PORT)
 const PORT = process.env.PORT || 5002;
 const MONGODB_URI = process.env.MONGODB_URI || "";
+// Feature flag: force job postings to use mock generation regardless of DB/external sources
+const JOB_POSTINGS_FORCE_MOCK = /^(1|true|yes|on)$/i.test(String(process.env.JOB_POSTINGS_FORCE_MOCK || ""));
 
 // Local file logging setup
 const DEFAULT_LOG_FILE = path.resolve(process.cwd(), "server", "data", "events.log");
@@ -1021,8 +1023,21 @@ async function attachMatchPercent(userId, postings) {
 // GET /api/job-postings?userId=...
 app.get("/api/job-postings", async (req, res) => {
   try {
-    const { userId } = req.query || {};
+    const { userId, forceMock } = req.query || {};
     const docs = await JobPosting.find({}).sort({ createdAt: -1 }).lean();
+
+    // If explicitly requested, env flag is on, or there are no postings, generate mock postings (Gemini-backed)
+    if (forceMock === "1" || JOB_POSTINGS_FORCE_MOCK || docs.length === 0) {
+      const items = await buildGeminiMockPostings(userId);
+      const withScores = await attachMatchPercent(userId, items);
+      appendEvent({
+        type: "job_postings_list_mock_fallback",
+        count: withScores.length,
+        userId: userId ? String(userId) : undefined,
+        forcedBy: forceMock === "1" ? "query" : JOB_POSTINGS_FORCE_MOCK ? "env" : docs.length === 0 ? "empty" : "other",
+      });
+      return res.json({ items: withScores, mock: true });
+    }
 
     const base = docs.map((d) => {
       const applied = userId
@@ -1047,6 +1062,183 @@ app.get("/api/job-postings", async (req, res) => {
   } catch (err) {
     console.error("Job postings list error:", err);
     appendEvent({ type: "job_postings_list_error", error: err?.message });
+    // If DB fetch failed, try returning mocks instead of error
+    try {
+      const { userId } = req.query || {};
+      const items = await buildGeminiMockPostings(userId);
+      const withScores = await attachMatchPercent(userId, items);
+      appendEvent({ type: "job_postings_list_error_fallback_mock", count: withScores.length });
+      return res.json({ items: withScores, mock: true });
+    } catch (e2) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  }
+});
+
+// Minimal config endpoint to expose feature flags to the client
+app.get("/api/config", (req, res) => {
+  try {
+    return res.json({
+      jobPostingsForceMock: JOB_POSTINGS_FORCE_MOCK,
+    });
+  } catch (e) {
+    return res.json({ jobPostingsForceMock: false });
+  }
+});
+
+// Helper: build non-AI mock postings if Gemini is unavailable or fails
+function buildStubMockPostings(userId) {
+  const majors = [
+    "Computer Science",
+    "Business",
+    "Design and Media",
+    "Health and Life Sciences",
+    "Natural Sciences",
+  ];
+  const companies = [
+    "FAMU Partners",
+    "Rattler Tech",
+    "Orange & Green Labs",
+    "Capital City Health",
+    "Sunshine Analytics",
+  ];
+  const pick = (arr, i) => arr[i % arr.length];
+  const now = Date.now();
+  const out = [];
+  for (const maj of majors) {
+    for (let i = 0; i < 10; i++) {
+      const title = `${maj} Intern ${i + 1}`;
+      out.push({
+        id: `mock-${maj.replace(/[^a-z0-9]/gi, "").toLowerCase()}-${i + 1}`,
+        title,
+        company: pick(companies, i),
+        createdAt: new Date(now - i * 86400000),
+        appliedAt: null,
+        matchPercent: null,
+        mock: true,
+        major: maj,
+      });
+    }
+  }
+  appendEvent({ type: "job_postings_mock_stub", count: out.length, userId: userId ? String(userId) : undefined });
+  return out;
+}
+
+// Helper: call Gemini to generate 10 mock listings per major, using position recommendations
+async function buildGeminiMockPostings(userId) {
+  const GEMINI_API_KEY = getGeminiApiKey();
+  if (!GEMINI_API_KEY) return buildStubMockPostings(userId);
+
+  // Gather context: latest job matches (position recommendations) and profile
+  const jm = await JobMatch.findOne({ userId }).sort({ createdAt: -1 }).lean().catch(() => null);
+  const profile = await getProfileSnapshot(userId).catch(() => ({}));
+  const recs = (jm?.items || []).map((x) => ({ title: x.title, score: x.score })).slice(0, 20);
+
+  const prompt = `You are helping a university career portal create mock job postings when the live feed is unavailable.
+Generate JSON ONLY (no commentary) with 5 keys, one per major, each an array of 10 postings:
+- "Computer Science"
+- "Business"
+- "Design and Media"
+- "Health and Life Sciences"
+- "Natural Sciences"
+
+Each posting must be an object with keys: title (short), company, major (one of the above), summary (1 sentence), applyUrl.
+Use the provided position recommendations as inspiration for realistic titles and companies.
+Return strict JSON object with those five keys only.
+
+Position recommendations (title, score 0-100): ${JSON.stringify(recs)}
+User profile snapshot: ${JSON.stringify(profile)}
+`;
+
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-goog-api-key": GEMINI_API_KEY },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      appendEvent({ type: "job_postings_mock_gemini_error", status: resp.status, body: data });
+      return buildStubMockPostings(userId);
+    }
+    // Extract the text from candidate
+    const text = String(
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+        data?.candidates?.[0]?.content?.parts?.[0]?.inline_data ||
+        ""
+    );
+    let parsed;
+    try {
+      // Attempt to locate JSON within the response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    } catch {
+      appendEvent({ type: "job_postings_mock_gemini_parse_fail" });
+      return buildStubMockPostings(userId);
+    }
+
+    const majors = [
+      "Computer Science",
+      "Business",
+      "Design and Media",
+      "Health and Life Sciences",
+      "Natural Sciences",
+    ];
+    const items = [];
+    const now = Date.now();
+    for (const maj of majors) {
+      const arr = Array.isArray(parsed?.[maj]) ? parsed[maj] : [];
+      for (let i = 0; i < Math.min(10, arr.length); i++) {
+        const it = arr[i] || {};
+        items.push({
+          id: `mock-${maj.replace(/[^a-z0-9]/gi, "").toLowerCase()}-${i + 1}`,
+          title: String(it.title || `${maj} Role ${i + 1}`),
+          company: String(it.company || "Mock Company"),
+          createdAt: new Date(now - i * 3600000),
+          appliedAt: null,
+          matchPercent: null,
+          mock: true,
+          major: maj,
+          summary: String(it.summary || ""),
+          applyUrl: String(it.applyUrl || "https://careers.example.com/apply"),
+        });
+      }
+      // If Gemini provided fewer than 10, top up with stubs
+      for (let i = arr.length; i < 10; i++) {
+        items.push({
+          id: `mock-${maj.replace(/[^a-z0-9]/gi, "").toLowerCase()}-${i + 1}`,
+          title: `${maj} Role ${i + 1}`,
+          company: "Mock Company",
+          createdAt: new Date(now - i * 3600000),
+          appliedAt: null,
+          matchPercent: null,
+          mock: true,
+          major: maj,
+          summary: "Exploratory entry-level opportunity.",
+          applyUrl: "https://careers.example.com/apply",
+        });
+      }
+    }
+    appendEvent({ type: "job_postings_mock_gemini_ok", count: items.length, userId: userId ? String(userId) : undefined });
+    return items;
+  } catch (e) {
+    appendEvent({ type: "job_postings_mock_gemini_exception", error: e?.message });
+    return buildStubMockPostings(userId);
+  }
+}
+
+// GET /api/job-postings/mocks?userId=...
+app.get("/api/job-postings/mocks", async (req, res) => {
+  try {
+    const { userId } = req.query || {};
+    const items = await buildGeminiMockPostings(userId);
+    // Even for mocks, attach match percentage if available
+    const withScores = await attachMatchPercent(userId, items);
+    return res.json({ items: withScores, mock: true });
+  } catch (err) {
+    console.error("Job postings mock error:", err);
+    appendEvent({ type: "job_postings_mock_error", error: err?.message });
     return res.status(500).json({ message: "Server error" });
   }
 });

@@ -6,6 +6,14 @@ export default function JobPostings({ user }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [useMock, setUseMock] = useState(() => {
+    try {
+      const v = localStorage.getItem("jobPostingsUseMock");
+      return v === "1";
+    } catch {
+      return false;
+    }
+  });
 
   // sidebar filter state
   const [role, setRole] = useState("");
@@ -134,20 +142,69 @@ export default function JobPostings({ user }) {
     try {
       setLoading(true);
       setError("");
-      const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-      const params = userId ? `?userId=${encodeURIComponent(userId)}` : "";
-      const resp = await fetch(`${base}/api/job-postings${params}`);
+      const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
+      const sp = new URLSearchParams();
+      if (userId) sp.set("userId", userId);
+      if (useMock) sp.set("forceMock", "1");
+      const qs = sp.toString() ? `?${sp.toString()}` : "";
+      const resp = await fetch(`${base}/api/job-postings${qs}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      setItems(Array.isArray(data.items) ? data.items : []);
+      const list = Array.isArray(data.items) ? data.items : [];
+      // If backend returned empty list, try mock fallback (Gemini-backed or stub)
+      if (list.length === 0) {
+        const mresp = await fetch(`${base}/api/job-postings/mocks${qs}`);
+        if (mresp.ok) {
+          const mdata = await mresp.json();
+          setItems(Array.isArray(mdata.items) ? mdata.items : []);
+        } else {
+          setItems(list);
+        }
+      } else {
+        setItems(list);
+      }
     } catch (e) {
-      setError(e?.message || "Failed to load");
+      // On failure, attempt to load mock postings
+      try {
+        const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
+        const sp = new URLSearchParams();
+        if (userId) sp.set("userId", userId);
+        // Even on error, honor the toggle for forcing mocks
+        if (useMock) sp.set("forceMock", "1");
+        const qs = sp.toString() ? `?${sp.toString()}` : "";
+        const mresp = await fetch(`${base}/api/job-postings/mocks${qs}`);
+        if (mresp.ok) {
+          const mdata = await mresp.json();
+          setItems(Array.isArray(mdata.items) ? mdata.items : []);
+          setError("");
+        } else {
+          setError(e?.message || "Failed to load");
+        }
+      } catch (e2) {
+        setError(e?.message || "Failed to load");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Fetch server config to initialize toggle if not explicitly set
+    (async () => {
+      try {
+        const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
+        const resp = await fetch(`${base}/api/config`);
+        if (resp.ok) {
+          const cfg = await resp.json();
+          // Only update if user hasn't chosen explicitly before
+          const hasLocal = localStorage.getItem("jobPostingsUseMock");
+          if (hasLocal == null && cfg && typeof cfg.jobPostingsForceMock === "boolean") {
+            setUseMock(Boolean(cfg.jobPostingsForceMock));
+          }
+        }
+      } catch {}
+    })();
+
     const seedThenFetch = async () => {
       // Seed sample postings if the database is empty.
       // This is done first to avoid a race condition where items are fetched before seeding is complete.
@@ -167,7 +224,7 @@ export default function JobPostings({ user }) {
     };
 
     seedThenFetch();
-  }, [userId]);
+  }, [userId, useMock]);
 
   // infer a coarse "role" from title
   function inferRole(title) {
@@ -221,7 +278,7 @@ export default function JobPostings({ user }) {
 
   const handleApply = async (id) => {
     try {
-      const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+      const base = import.meta.env.VITE_API_BASE || "http://localhost:5002";
       const resp = await fetch(`${base}/api/job-postings/${id}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -287,6 +344,27 @@ export default function JobPostings({ user }) {
         {/* Sidebar */}
         <aside style={styles.sidebar}>
           <h2 style={styles.sidebarH2}>Filter Jobs</h2>
+
+          <div className="form-check form-switch mb-3">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="toggleUseMock"
+              checked={useMock}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setUseMock(v);
+                try {
+                  localStorage.setItem("jobPostingsUseMock", v ? "1" : "0");
+                } catch {}
+                // Refetch with new preference
+                fetchItems();
+              }}
+            />
+            <label className="form-check-label" htmlFor="toggleUseMock">
+              Use mock postings (override external API)
+            </label>
+          </div>
 
           <div style={styles.filterGroup}>
             <label htmlFor="role" style={styles.label}>
@@ -414,7 +492,14 @@ export default function JobPostings({ user }) {
                     ⋮
                   </button>
 
-                  <div style={styles.title}>{job.title}</div>
+                  <div style={styles.title}>
+                    {job.title}
+                    {job.mock && (
+                      <span className="badge bg-warning text-dark ms-2" title="AI-generated mock listing">
+                        AI-generated
+                      </span>
+                    )}
+                  </div>
                   <div style={styles.company}>{job.company}</div>
                   <div style={styles.details}>
                     Posted {new Date(job.createdAt).toLocaleDateString()}
@@ -445,6 +530,23 @@ export default function JobPostings({ user }) {
                       <p>
                         <strong>Match:</strong> {job.matchPercent ?? 0}%
                       </p>
+                      {job.major && (
+                        <p>
+                          <strong>Major:</strong> {job.major}
+                        </p>
+                      )}
+                      {job.summary && (
+                        <p>
+                          <strong>Summary:</strong> {job.summary}
+                        </p>
+                      )}
+                      {job.applyUrl && (
+                        <p>
+                          <a href={job.applyUrl} target="_blank" rel="noreferrer" className="link-success">
+                            Apply link
+                          </a>
+                        </p>
+                      )}
                       <p>
                         <strong>Applied:</strong>{" "}
                         {applied ? new Date(job.appliedAt).toLocaleString() : "Not yet"}

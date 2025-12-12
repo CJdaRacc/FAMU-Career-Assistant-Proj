@@ -39,11 +39,7 @@ export default function Navbar({ user, onLogout }) {
                 Dashboard
               </button>
             </li>
-            <li className="nav-item">
-              <button className="nav-link btn btn-link text-white-50" onClick={() => go("#/quiz")}>
-                Profile
-              </button>
-            </li>
+
             <li className="nav-item">
               <button
                 className="nav-link btn btn-link text-white-50"
