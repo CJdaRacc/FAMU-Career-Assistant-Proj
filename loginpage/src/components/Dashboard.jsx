@@ -15,20 +15,49 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <div className="container mt-2 mb-4">
+      {/* Local style to shift the "Your Profile" card 2 inches left on large screens */}
+      <style>{`
+        @media (min-width: 992px) {
+          .profile-card-shift {
+            margin-left: -4in !important;
+          }
+        }
+      `}</style>
       <div className="row g-4 align-items-start">
         {/* Left column: Profile card */}
-        <div className="col-12 col-lg-4">
+        <div className="col-12 col-lg-4 profile-card-shift">
           <div className="mb-4">
             <ProfileCard user={user} />
           </div>
+
+          {/* Sneak Peek: Saved Jobs moved under Profile card */}
+          <div className="mb-4">
+            <div className="card shadow-sm">
+              <div className="card-body d-flex flex-column">
+                <h5 className="mb-2">Sneak Peek: Saved Jobs</h5>
+                <SavedSneakPeek />
+                <div className="mt-auto pt-3 d-grid gap-2">
+                  <button
+                    className="btn btn-success w-100"
+                    onClick={() => (window.location.hash = "#/job-postings")}
+                  >
+                    Go to Job Postings
+                  </button>
+                  <button className="btn btn-primary w-100" onClick={goToSave}>
+                    Go to Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Right column: split into Dashboard (left) and Sneak Peek (right) */}
+        {/* Right column: Dashboard content */}
         <div className="col-12 col-lg-8">
           <div className="row g-4">
-            {/* Main dashboard content (left) */}
-            <div className="col-12 col-lg-8">
-              <div className="card shadow-sm h-100" style={{ minHeight: "5in" }}>
+            {/* Main dashboard content now spans full width of this column */}
+            <div className="col-12">
+              <div className="card shadow-sm h-100" style={{ minHeight: "10in", width: "calc(100% + 5in)" }}>
                 <div className="card-body p-4">
                   <div className="text-center mb-3">
                     <h2 className="mb-3" style={{ fontFamily: '"Limelight", serif' }}>
@@ -52,27 +81,6 @@ export default function Dashboard({ user, onLogout }) {
                   <hr className="my-4" />
                   <h5 className="mb-3">Position Recommendations</h5>
                   <JobRecommendations user={user} />
-                </div>
-              </div>
-            </div>
-
-            {/* Sneak Peek: Saved Jobs (right) */}
-            <div className="col-12 col-lg-4">
-              <div className="card shadow-sm">
-                <div className="card-body d-flex flex-column">
-                  <h5 className="mb-2">Sneak Peek: Saved Jobs</h5>
-                  <SavedSneakPeek />
-                  <div className="mt-auto pt-3 d-grid gap-2">
-                    <button
-                      className="btn btn-success w-100"
-                      onClick={() => (window.location.hash = "#/job-postings")}
-                    >
-                      Go to Job Postings
-                    </button>
-                    <button className="btn btn-primary w-100" onClick={goToSave}>
-                      Go to Save
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
