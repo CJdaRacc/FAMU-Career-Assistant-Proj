@@ -31,7 +31,8 @@ function getGeminiApiKey() {
 }
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+// Ensure backend listens on 5002 by default (overridable via env PORT)
+const PORT = process.env.PORT || 5002;
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
 // Local file logging setup
@@ -133,6 +134,8 @@ const resultSchema = new mongoose.Schema(
     major: { type: String },
     interests: { type: [String], default: [] },
     classYear: { type: String },
+    // Added: college (optional)
+    college: { type: String },
   },
   { timestamps: true },
 );
@@ -159,6 +162,7 @@ const advancedQASchema = new mongoose.Schema(
       major: { type: String },
       interests: { type: [String], default: [] },
       classYear: { type: String },
+      college: { type: String },
     },
     // Optional meta/debug
     aiMeta: {
@@ -447,6 +451,7 @@ async function getProfileSnapshot(userId) {
       major: latest?.major || undefined,
       interests: Array.isArray(latest?.interests) ? latest.interests : [],
       classYear: latest?.classYear || undefined,
+      college: latest?.college || undefined,
     };
   } catch (e) {
     return { interests: [] };
@@ -458,6 +463,63 @@ app.get("/api/advanced/init-questions", (req, res) => {
   appendEvent({ type: "adv_init_questions" });
   return res.json({ questions: ADV_GENERIC_QUESTIONS });
 });
+
+// Basic profile API (read/update): major, classYear (graduation year), college, interests
+app.get(
+  "/api/profile",
+  wrapAsync(async (req, res) => {
+    const userId = String(req.query.userId || "").trim();
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+    const profile = await getProfileSnapshot(userId);
+    return res.json({ userId, profile });
+  }),
+);
+
+app.put(
+  "/api/profile",
+  wrapAsync(async (req, res) => {
+    const { userId } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    // Validate payload
+    const major = typeof req.body.major === "string" ? req.body.major.trim() : undefined;
+    const classYear = typeof req.body.classYear === "string" ? req.body.classYear.trim() : undefined;
+    const college = typeof req.body.college === "string" ? req.body.college.trim() : undefined;
+    const interests = Array.isArray(req.body.interests)
+      ? req.body.interests.map((s) => String(s)).filter(Boolean)
+      : undefined;
+
+    if (!major && !classYear && !college && !interests) {
+      return res.status(400).json({ message: "No profile fields provided" });
+    }
+
+    // Basic classYear sanity check if provided
+    if (classYear && !/^[0-9]{4}$/.test(classYear)) {
+      return res.status(400).json({ message: "classYear must be a 4-digit year" });
+    }
+
+    // Ensure user exists
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const payload = { userId };
+    if (major != null) payload.major = major;
+    if (classYear != null) payload.classYear = classYear;
+    if (college != null) payload.college = college;
+    if (interests != null) payload.interests = interests;
+
+    // Save as a new Result document (acts as profile snapshot)
+    const doc = await Result.create(payload);
+    appendEvent({ type: "profile_updated", userId: String(userId), resultId: String(doc._id) });
+
+    const profile = await getProfileSnapshot(userId);
+    return res.json({ message: "Profile updated", profile });
+  }),
+);
 
 // Generate 8 personalized questions from Gemini based on user profile, prior answers, and current generic answers
 app.post("/api/advanced/generate", async (req, res) => {

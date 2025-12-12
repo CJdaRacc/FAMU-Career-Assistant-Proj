@@ -1,21 +1,34 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      "/api": {
-        // Use 127.0.0.1 to avoid potential IPv6/localhost resolution issues on Windows
-        target: "http://127.0.0.1:5000",
-        changeOrigin: true,
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => {
+  // Load env variables. Prefix "" loads all (not just VITE_*) for config-time use.
+  const env = loadEnv(mode, process.cwd(), "");
+  const port = Number(env.VITE_PORT || env.PORT || 5174);
+
+  return {
+    plugins: [react()],
+    server: {
+      // Explicitly set the dev server port; allow auto-pick if busy
+      port,
+      strictPort: false,
+      proxy: {
+        "/api": {
+          // Use 127.0.0.1 to avoid potential IPv6/localhost resolution issues on Windows
+          target: "http://127.0.0.1:5002",
+          changeOrigin: true,
+        },
       },
     },
-  },
-  // Vitest configuration
-  test: {
-    environment: "jsdom",
-    setupFiles: ["test/setupTests.js"],
-  },
+    preview: {
+      port,
+      strictPort: false,
+    },
+    // Vitest configuration
+    test: {
+      environment: "jsdom",
+      setupFiles: ["test/setupTests.js"],
+    },
+  };
 });
